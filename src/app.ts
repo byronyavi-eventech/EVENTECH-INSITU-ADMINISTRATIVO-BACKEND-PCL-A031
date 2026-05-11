@@ -2,11 +2,16 @@ import express from 'express';
 import cors from 'cors';
 import { routes } from './routes/index.js';
 import { errorHandler } from './middlewares/error.middleware.js';
+import { toNodeHandler } from 'better-auth/node';
+import { auth } from './auth.js';
 
 export const app = express();
 
 // Middlewares
 app.use(cors());
+
+app.all('/api/auth/*splat', toNodeHandler(auth));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
