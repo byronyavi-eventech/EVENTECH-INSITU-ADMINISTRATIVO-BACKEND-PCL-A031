@@ -1,0 +1,147 @@
+/**
+ * quotation.schema.ts
+ * Quotation (cotización) and its line items (detalle_ensayo).
+ *
+ * A cotización is raised against an obra and contains one or more line items,
+ * each referencing a tipo_ensayo with a locked-in unit price at the time of
+ * quotation creation.
+ */
+import {
+  pgTable,
+  bigserial,
+  varchar,
+  text,
+  integer,
+  numeric,
+  timestamp,
+  index,
+  unique,
+} from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { user } from './auth.schema.js';
+import { obra } from './client.schema.js';
+import { tipoEnsayo } from './catalog.schema.js';
+import { estadoCotizacionEnum, origenCotizacionEnum } from './enums.js';
+
+/**
+ * `tbl_cotizacion` → `cotizacion`
+ *
+ * Design decisions:
+ * - `estado` uses a PG enum (enforced at DB level).
+ * - `origen` uses a PG enum.
+ * - `creadoPor` is nullable: web-originated quotes may not have an internal user.
+ * - `codigo_cotizacion` is nullable until formally assigned (UNIQUE on non-NULL
+ *   values — PostgreSQL ignores NULLs in unique indexes, so multiple BORRADOR
+ *   rows can coexist without a code).
+ * - `deleted_at` implements soft delete. Hard deletes are not allowed on
+ *   financial documents. Application queries MUST filter `WHERE deleted_at IS NULL`.
+ * - `fecha_solicitud` vs `created_at`: `fecha_solicitud` is the business date
+ *   the client requested the quote (may differ from DB creation time for
+ *   retroactively entered quotes).
+ * - `observaciones` uses TEXT (no length limit) — notes can be long.
+ */
+export const cotizacion = pgTable(
+  'cotizacion',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    obraId: bigserial('obra_id', { mode: 'number' })
+      .notNull()
+      .references(() => obra.id, { onDelete: 'restrict' }),
+
+    codigoCotizacion: varchar('codigo_cotizacion', { length: 30 }).unique(),
+    origen: origenCotizacionEnum('origen').notNull(),
+    estado: estadoCotizacionEnum('estado').notNull().default('BORRADOR'),
+    observaciones: text('observaciones'),
+
+    // Internal user who created/entered the quote. NULL for web self-service.
+    creadoPor: text('creado_por').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+
+    // Business date the client requested the quote (audit / SLA tracking).
+    fechaSolicitud: timestamp('fecha_solicitud', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+
+    // Soft delete — financial documents are never hard-deleted.
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index('cotizacion_obra_id_idx').on(t.obraId),
+    index('cotizacion_estado_idx').on(t.estado),
+    index('cotizacion_creado_por_idx').on(t.creadoPor),
+    // Partial index for active (non-deleted) quotations — the most common query.
+    index('cotizacion_active_idx').on(t.obraId).where(
+      sql`${t.deletedAt} IS NULL`
+    ),
+    index('cotizacion_fecha_solicitud_idx').on(t.fechaSolicitud),
+  ],
+);
+
+/**
+ * `tbl_cotizacion_detalle_ensayo` → `cotizacion_detalle`
+ *
+ * Line items within a quotation.
+ *
+ * Design decisions:
+ * - `precio_unitario` is stored here (snapshotted from precio_ensayo at creation
+ *   time). This is intentional: changing the catalogue price must NOT retroactively
+ *   modify existing quotations.
+ * - `subtotal` is NOT a generated column. The formula was incorrect in the original
+ *   schema (omitted `cantidad_visitas`). The correct formula varies by business rule
+ *   (is it ensayos × visitas × precio, or just ensayos × precio?). Compute in the
+ *   service layer and store if needed for reporting.
+ * - Composite unique on (cotizacion_id, tipo_ensayo_id) prevents duplicating the
+ *   same test type in the same quotation. If the business allows the same test
+ *   multiple times (different phases), remove this constraint.
+ */
+export const cotizacionDetalle = pgTable(
+  'cotizacion_detalle',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    cotizacionId: bigserial('cotizacion_id', { mode: 'number' })
+      .notNull()
+      .references(() => cotizacion.id, { onDelete: 'cascade' }),
+    tipoEnsayoId: bigserial('tipo_ensayo_id', { mode: 'number' })
+      .notNull()
+      .references(() => tipoEnsayo.id, { onDelete: 'restrict' }),
+
+    cantidadEnsayos: integer('cantidad_ensayos').notNull(),
+    cantidadVisitas: integer('cantidad_visitas').notNull(),
+
+    // Price locked at quote creation time — never read from precio_ensayo retroactively.
+    precioUnitario: numeric('precio_unitario', {
+      precision: 12,
+      scale: 2,
+    }).notNull(),
+
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index('cotizacion_detalle_cotizacion_id_idx').on(t.cotizacionId),
+    index('cotizacion_detalle_tipo_ensayo_id_idx').on(t.tipoEnsayoId),
+    // Assumption: one test type appears only once per quotation.
+    // Remove this unique if the business requires duplicates (e.g., phased work).
+    unique('cotizacion_detalle_cotizacion_tipo_unique').on(
+      t.cotizacionId,
+      t.tipoEnsayoId,
+    ),
+  ],
+);
+
+export type Cotizacion = typeof cotizacion.$inferSelect;
+export type NewCotizacion = typeof cotizacion.$inferInsert;
+export type CotizacionDetalle = typeof cotizacionDetalle.$inferSelect;
+export type NewCotizacionDetalle = typeof cotizacionDetalle.$inferInsert;
