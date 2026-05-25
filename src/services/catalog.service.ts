@@ -135,6 +135,46 @@ function todayIso(): string {
 // Service — Write
 // ---------------------------------------------------------------------------
 
+// ── Input / Output: Area ────────────────────────────────────────────────────
+
+export interface CreateAreaInput {
+  nombreArea: string;
+}
+
+export interface CreateAreaResult {
+  id: number;
+  nombreArea: string;
+  activo: boolean;
+}
+
+/**
+ * Creates a new laboratory area.
+ *
+ * Throws 409 if an area with the same name already exists (case-sensitive
+ * match mirrors the DB unique constraint on nombre_area).
+ */
+export async function createArea(input: CreateAreaInput): Promise<CreateAreaResult> {
+  logger.info({ nombreArea: input.nombreArea }, 'catalog.service: createArea');
+
+  const [existing] = await db
+    .select()
+    .from(areaEnsayo)
+    .where(eq(areaEnsayo.nombreArea, input.nombreArea))
+    .limit(1);
+
+  if (existing) {
+    throw new AppError(`El área "${input.nombreArea}" ya existe.`, 409);
+  }
+
+  const [area] = await db
+    .insert(areaEnsayo)
+    .values({ nombreArea: input.nombreArea })
+    .returning();
+
+  logger.info({ areaId: area.id }, 'catalog.service: area created OK');
+  return { id: area.id, nombreArea: area.nombreArea, activo: area.activo };
+}
+
 /**
  * Creates a complete laboratory test entry atomically.
  *

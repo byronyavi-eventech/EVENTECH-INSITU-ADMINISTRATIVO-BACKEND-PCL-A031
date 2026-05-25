@@ -18,6 +18,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import {
+  createArea,
   createEnsayo,
   getCatalogTree,
   listEnsayos,
@@ -46,6 +47,30 @@ function assertValid<T>(parsed: { success: true; data: T } | { success: false; e
   }
   return parsed.data;
 }
+
+// ---------------------------------------------------------------------------
+// POST /api/catalog/areas — Create area
+// ---------------------------------------------------------------------------
+
+const createAreaSchema = z.object({
+  nombreArea: z
+    .string({ error: '"nombreArea" es requerido y debe ser texto.' })
+    .trim()
+    .min(1, '"nombreArea" no puede estar vacío.')
+    .max(150, '"nombreArea" no puede exceder 150 caracteres.'),
+});
+
+/**
+ * POST /api/catalog/areas
+ * Body: { nombreArea }
+ * Response 201: { status, data: { id, nombreArea, activo } }
+ * Response 409: área con ese nombre ya existe
+ */
+export const createAreaHandler: AsyncHandler = wrap(async (req, res) => {
+  const body = assertValid<z.infer<typeof createAreaSchema>>(createAreaSchema.safeParse(req.body));
+  const result = await createArea(body);
+  res.status(201).json({ status: 'success', data: result });
+});
 
 // ---------------------------------------------------------------------------
 // POST /api/catalog/ensayos — Create
