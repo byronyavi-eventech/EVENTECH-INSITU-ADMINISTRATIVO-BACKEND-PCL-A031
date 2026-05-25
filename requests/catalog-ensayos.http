@@ -1,0 +1,210 @@
+@baseUrl = http://localhost:3000/api/catalog
+
+# ── Set this to a real tipo_ensayo.id after running POST ──────────────────────
+@ensayoId = 1
+
+
+# ==============================================================================
+# 0. SEED — Create a test entry to work with
+# ==============================================================================
+
+### POST /ensayos — create (happy path)
+# @name createEnsayo
+POST {{baseUrl}}/ensayos
+Content-Type: application/json
+
+{
+  "nombreArea": "Mecánica de Suelos",
+  "nombreSubarea": "Compactación",
+  "nombreTipoEnsayo": "Ensayo Proctor Modificado ASTM D1557",
+  "codigoNorma": "ASTM D1557",
+  "precio": "85000",
+  "fechaInicio": "2026-01-01"
+}
+
+
+# ==============================================================================
+# 1. GET — verify baseline before editing
+# ==============================================================================
+
+### GET /ensayos/:id — detail with full price history
+GET {{baseUrl}}/ensayos/{{ensayoId}}
+
+
+# ==============================================================================
+# 2. PUT — partial update: name only
+# ==============================================================================
+
+### PUT /ensayos/:id — rename the test (no price change)
+PUT {{baseUrl}}/ensayos/{{ensayoId}}
+Content-Type: application/json
+
+{
+  "nombreTipoEnsayo": "Ensayo Proctor Modificado ASTM D1557 (rev. 2026)"
+}
+
+
+# ==============================================================================
+# 3. PUT — partial update: standard code only
+# ==============================================================================
+
+### PUT /ensayos/:id — update codigoNorma
+PUT {{baseUrl}}/ensayos/{{ensayoId}}
+Content-Type: application/json
+
+{
+  "codigoNorma": "ASTM D1557-21"
+}
+
+
+# ==============================================================================
+# 4. PUT — price rotation: new price only (fecha defaults to today)
+# ==============================================================================
+
+### PUT /ensayos/:id — rotate price (no explicit fechaInicio)
+PUT {{baseUrl}}/ensayos/{{ensayoId}}
+Content-Type: application/json
+
+{
+  "precio": "95000"
+}
+
+
+# ==============================================================================
+# 5. PUT — price rotation: new price WITH explicit fechaInicio
+# ==============================================================================
+
+### PUT /ensayos/:id — rotate price with custom start date
+PUT {{baseUrl}}/ensayos/{{ensayoId}}
+Content-Type: application/json
+
+{
+  "precio": "102500.50",
+  "fechaInicio": "2026-06-01"
+}
+
+
+# ==============================================================================
+# 6. PUT — combined: rename + clear codigoNorma + new price
+# ==============================================================================
+
+### PUT /ensayos/:id — full patch in a single request
+PUT {{baseUrl}}/ensayos/{{ensayoId}}
+Content-Type: application/json
+
+{
+  "nombreTipoEnsayo": "Proctor Modificado",
+  "codigoNorma": null,
+  "precio": "110000",
+  "fechaInicio": "2026-07-01"
+}
+
+
+# ==============================================================================
+# 7. GET after PUT — confirm price history grew
+# ==============================================================================
+
+### GET /ensayos/:id — should show multiple precio records now
+GET {{baseUrl}}/ensayos/{{ensayoId}}
+
+
+# ==============================================================================
+# ── ERROR CASES — PUT ─────────────────────────────────────────────────────────
+# ==============================================================================
+
+### PUT 400 — empty body (no fields at all)
+PUT {{baseUrl}}/ensayos/{{ensayoId}}
+Content-Type: application/json
+
+{}
+
+
+### PUT 400 — fechaInicio without precio
+PUT {{baseUrl}}/ensayos/{{ensayoId}}
+Content-Type: application/json
+
+{
+  "fechaInicio": "2026-09-01"
+}
+
+
+### PUT 400 — precio with wrong format (comma instead of dot)
+PUT {{baseUrl}}/ensayos/{{ensayoId}}
+Content-Type: application/json
+
+{
+  "precio": "95,000"
+}
+
+
+### PUT 400 — precio = 0 (must be > 0)
+PUT {{baseUrl}}/ensayos/{{ensayoId}}
+Content-Type: application/json
+
+{
+  "precio": "0"
+}
+
+
+### PUT 400 — id param not a number
+PUT {{baseUrl}}/ensayos/abc
+Content-Type: application/json
+
+{
+  "precio": "95000"
+}
+
+
+### PUT 404 — non-existent id
+PUT {{baseUrl}}/ensayos/999999
+Content-Type: application/json
+
+{
+  "precio": "95000"
+}
+
+
+### PUT 409 — duplicate name (create a second ensayo first, then try to rename it to this one)
+# Run the POST above twice with different names, then rename the second to the first.
+PUT {{baseUrl}}/ensayos/{{ensayoId}}
+Content-Type: application/json
+
+{
+  "nombreTipoEnsayo": "Ensayo Proctor Modificado ASTM D1557"
+}
+
+
+# ==============================================================================
+# 8. DELETE — soft-delete
+# ==============================================================================
+
+### DELETE /ensayos/:id — deactivate (happy path)
+DELETE {{baseUrl}}/ensayos/{{ensayoId}}
+
+
+# ==============================================================================
+# 9. GET after DELETE — should be excluded from default list (activo=true)
+# ==============================================================================
+
+### GET /ensayos — default list (activo=true) — deleted entry should NOT appear
+GET {{baseUrl}}/ensayos
+
+
+### GET /ensayos?activo=false — explicitly query inactive — deleted entry SHOULD appear
+GET {{baseUrl}}/ensayos?activo=false
+
+
+# ==============================================================================
+# ── ERROR CASES — DELETE ──────────────────────────────────────────────────────
+# ==============================================================================
+
+### DELETE 409 — already inactive (run DELETE twice on the same id)
+DELETE {{baseUrl}}/ensayos/{{ensayoId}}
+
+
+### DELETE 404 — non-existent id
+DELETE {{baseUrl}}/ensayos/999999
+
+
+### DELETE 400 — id param not a number
+DELETE {{baseUrl}}/ensayos/abc

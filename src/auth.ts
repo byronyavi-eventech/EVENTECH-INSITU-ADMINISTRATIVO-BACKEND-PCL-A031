@@ -23,12 +23,17 @@ export const auth = betterAuth({
   emailVerification: {
     sendOnSignUp: true,
     sendVerificationEmail: async ({ user, url, token }, request) => {
-      await resend.emails.send({
-        from: 'onboarding@resend.dev', // Replace with client domain
-        to: user.email,
-        subject: 'Verify your email address - Insitu',
-        html: `<p>Hi ${user.name},</p><p>Please click <a href="${url}">here</a> to verify your email address.</p>`,
-      });
+      try {
+        const result = await resend.emails.send({
+          from: process.env.EMAIL_SENDER as string,
+          to: user.email,
+          subject: 'Verificar tu correo electrónico - Insitu',
+          html: `<p>Hola ${user.name},</p><p>Por favor, haz clic <a href="${url}">aquí</a> para verificar tu dirección de correo electrónico.</p>`,
+        });
+        console.log('Resend send email result:', result);
+      } catch (error) {
+        console.error('Error sending verification email via Resend:', error);
+      }
     },
   },
   socialProviders: {
