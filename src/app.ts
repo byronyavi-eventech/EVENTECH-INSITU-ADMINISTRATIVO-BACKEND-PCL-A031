@@ -8,7 +8,11 @@ import { auth } from './auth.js';
 export const app = express();
 
 // Middlewares
-app.use(cors({ origin: ['http://localhost:5173'], credentials: true }));
+const allowedOrigins = ['http://localhost:5173', process.env.FRONTEND_URL].filter(
+  Boolean,
+) as string[];
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 app.all('/api/auth/*splat', toNodeHandler(auth));
 
