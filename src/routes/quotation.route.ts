@@ -4,6 +4,8 @@ import {
   listQuotationsHandler,
   updateEstadoHandler,
   updateQuotationHandler,
+  getPdfHandler,
+  sendEmailHandler,
 } from '../controllers/quotation.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 
@@ -16,3 +18,7 @@ quotationRouter.post('/web', submitWebQuotationHandler);
 quotationRouter.get('/', requireAuth, listQuotationsHandler);
 quotationRouter.patch('/:id/estado', requireAuth, updateEstadoHandler);
 quotationRouter.put('/:id', requireAuth, updateQuotationHandler);
+
+// PDF + Email
+quotationRouter.get('/:id/pdf', requireAuth, getPdfHandler);
+quotationRouter.post('/:id/send-email', requireAuth, sendEmailHandler);

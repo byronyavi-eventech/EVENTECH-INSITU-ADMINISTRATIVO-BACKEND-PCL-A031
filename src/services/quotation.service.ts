@@ -315,9 +315,128 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
   };
 }
 
+// ─── Get by ID ───────────────────────────────────────────────────────────────
+
+export async function getCotizacionById(id: number): Promise<QuotationListItem> {
+  const [row] = await db
+    .select({
+      id: cotizacion.id,
+      codigoCotizacion: cotizacion.codigoCotizacion,
+      estado: cotizacion.estado,
+      origen: cotizacion.origen,
+      fechaSolicitud: cotizacion.fechaSolicitud,
+      createdAt: cotizacion.createdAt,
+      observaciones: cotizacion.observaciones,
+      clienteId: cliente.id,
+      rutEmpresa: cliente.rutEmpresa,
+      giroEmpresa: cliente.giroEmpresa,
+      nombreContacto: cliente.nombreContacto,
+      apellidosContacto: cliente.apellidosContacto,
+      celularContacto: cliente.celularContacto,
+      email: cliente.email,
+      direccionEmpresa: cliente.direccionEmpresa,
+      clienteRegion: cliente.region,
+      clienteComuna: cliente.comuna,
+      clienteCiudad: cliente.ciudad,
+      obraId: obra.id,
+      nombreObra: obra.nombreObra,
+      nombreMandante: obra.nombreMandante,
+      nombreContratista: obra.nombreContratista,
+      ubicacionObra: obra.ubicacionObra,
+      obraRegion: obra.region,
+      obraComuna: obra.comuna,
+      obraCiudad: obra.ciudad,
+      duracionMeses: obra.duracionMeses,
+    })
+    .from(cotizacion)
+    .innerJoin(obra, eq(cotizacion.obraId, obra.id))
+    .innerJoin(cliente, eq(obra.clienteId, cliente.id))
+    .where(and(eq(cotizacion.id, id), isNull(cotizacion.deletedAt)))
+    .limit(1);
+
+  if (!row) throw new AppError(`Cotización ${id} no encontrada.`, 404);
+
+  const [encRow] = await db
+    .select()
+    .from(encargadoObra)
+    .where(eq(encargadoObra.obraId, row.obraId))
+    .limit(1);
+
+  const detalleRows = await db
+    .select({
+      id: cotizacionDetalle.id,
+      cotizacionId: cotizacionDetalle.cotizacionId,
+      tipoEnsayoId: cotizacionDetalle.tipoEnsayoId,
+      nombreTipoEnsayo: tipoEnsayo.nombreTipoEnsayo,
+      nombreArea: areaEnsayo.nombreArea,
+      nombreSubarea: subareaEnsayo.nombreSubarea,
+      cantidadEnsayos: cotizacionDetalle.cantidadEnsayos,
+      cantidadVisitas: cotizacionDetalle.cantidadVisitas,
+      precioUnitario: cotizacionDetalle.precioUnitario,
+    })
+    .from(cotizacionDetalle)
+    .innerJoin(tipoEnsayo, eq(cotizacionDetalle.tipoEnsayoId, tipoEnsayo.id))
+    .innerJoin(subareaEnsayo, eq(tipoEnsayo.subareaId, subareaEnsayo.id))
+    .innerJoin(areaEnsayo, eq(subareaEnsayo.areaId, areaEnsayo.id))
+    .where(eq(cotizacionDetalle.cotizacionId, id));
+
+  return {
+    id: row.id,
+    codigoCotizacion: row.codigoCotizacion,
+    estado: row.estado,
+    origen: row.origen,
+    fechaSolicitud: row.fechaSolicitud.toISOString(),
+    createdAt: row.createdAt.toISOString(),
+    observaciones: row.observaciones,
+    cliente: {
+      id: row.clienteId,
+      rutEmpresa: row.rutEmpresa,
+      giroEmpresa: row.giroEmpresa,
+      nombreContacto: row.nombreContacto,
+      apellidosContacto: row.apellidosContacto,
+      celularContacto: row.celularContacto,
+      email: row.email,
+      direccionEmpresa: row.direccionEmpresa,
+      region: row.clienteRegion,
+      comuna: row.clienteComuna,
+      ciudad: row.clienteCiudad,
+    },
+    obra: {
+      id: row.obraId,
+      nombreObra: row.nombreObra,
+      nombreMandante: row.nombreMandante,
+      nombreContratista: row.nombreContratista,
+      ubicacionObra: row.ubicacionObra,
+      region: row.obraRegion,
+      comuna: row.obraComuna,
+      ciudad: row.obraCiudad,
+      duracionMeses: row.duracionMeses,
+    },
+    encargado: encRow
+      ? {
+          id: encRow.id,
+          nombreEncargado: encRow.nombreEncargado,
+          correoEncargado: encRow.correoEncargado,
+          telefonoEncargado: encRow.telefonoEncargado,
+        }
+      : null,
+    detalles: detalleRows.map((d) => ({
+      id: d.id,
+      tipoEnsayoId: d.tipoEnsayoId,
+      nombreTipoEnsayo: d.nombreTipoEnsayo,
+      nombreArea: d.nombreArea,
+      nombreSubarea: d.nombreSubarea,
+      cantidadEnsayos: d.cantidadEnsayos,
+      cantidadVisitas: d.cantidadVisitas,
+      precioUnitario: d.precioUnitario,
+    })),
+  };
+}
+
 // ─── Update estado ────────────────────────────────────────────────────────────
 
 export type EstadoCotizacion = typeof cotizacion.$inferSelect['estado'];
+
 
 export async function updateEstadoCotizacion(
   id: number,

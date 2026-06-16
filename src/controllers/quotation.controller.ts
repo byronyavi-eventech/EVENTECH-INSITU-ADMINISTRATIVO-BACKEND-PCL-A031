@@ -1,12 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import React from 'react';
+import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer';
 import {
   submitWebQuotation,
   listQuotations,
   updateEstadoCotizacion,
   updateQuotation,
+  getCotizacionById,
   EstadoCotizacion,
 } from '../services/quotation.service.js';
+import { sendCotizacionEmail } from '../services/email.service.js';
+import { CotizacionDocument } from '../pdf/cotizacion-document.js';
 import { AppError } from '../utils/app-error.js';
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>;
@@ -138,4 +143,59 @@ export const updateQuotationHandler: AsyncHandler = wrap(async (req, res) => {
   const body = assertValid(updateQuotationSchema.safeParse(req.body));
   const data = await updateQuotation(id, body);
   res.json({ status: 'success', data });
+});
+
+// ─── GET /quotations/:id/pdf ──────────────────────────────────────────────────
+
+export const getPdfHandler: AsyncHandler = wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) throw new AppError('ID inválido.', 400);
+
+  const cotizacion = await getCotizacionById(id);
+
+  if (cotizacion.estado !== 'ACEPTADA') {
+    throw new AppError(
+      'Solo se puede generar PDF de cotizaciones en estado ACEPTADA.',
+      422,
+    );
+  }
+
+  const pdfBuffer = await renderToBuffer(
+    React.createElement(CotizacionDocument, { cotizacion }) as React.ReactElement<DocumentProps>,
+  );
+
+  const docCode =
+    cotizacion.codigoCotizacion ??
+    `COT-${String(cotizacion.id).padStart(5, '0')}`;
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader(
+    'Content-Disposition',
+    `inline; filename="cotizacion-${docCode}.pdf"`,
+  );
+  res.setHeader('Content-Length', pdfBuffer.length);
+  res.end(pdfBuffer);
+});
+
+// ─── POST /quotations/:id/send-email ─────────────────────────────────────────
+
+export const sendEmailHandler: AsyncHandler = wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) throw new AppError('ID inválido.', 400);
+
+  const cotizacion = await getCotizacionById(id);
+
+  if (cotizacion.estado !== 'ACEPTADA') {
+    throw new AppError(
+      'Solo se puede enviar email de cotizaciones en estado ACEPTADA.',
+      422,
+    );
+  }
+
+  await sendCotizacionEmail(cotizacion);
+
+  res.json({
+    status: 'success',
+    message: `Email enviado a ${cotizacion.cliente.email}`,
+  });
 });

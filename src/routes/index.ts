@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { healthRouter } from './health.route.js';
 import { catalogRouter } from './catalog.route.js';
 import { quotationRouter } from './quotation.route.js';
+import { userRouter } from './user.route.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 
 export const routes = Router();
@@ -14,3 +15,4 @@ routes.use('/quotations', quotationRouter);
 routes.use(requireAuth);
 
 routes.use('/catalog', catalogRouter);
+routes.use('/', userRouter);
