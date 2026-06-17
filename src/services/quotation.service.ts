@@ -53,7 +53,7 @@ export interface SubmitWebQuotationResult {
   obraId: number;
 }
 
-// ─── List ────────────────────────────────────────────────────────────────────
+// List
 
 export interface ListQuotationsInput {
   estado?: string;
@@ -125,7 +125,8 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
 
   // Build filter conditions on cotizacion level
   const conditions: SQL[] = [isNull(cotizacion.deletedAt)];
-  if (estado) conditions.push(eq(cotizacion.estado, estado as typeof cotizacion.$inferSelect['estado']));
+  if (estado)
+    conditions.push(eq(cotizacion.estado, estado as (typeof cotizacion.$inferSelect)['estado']));
 
   const baseWhere = and(...conditions);
 
@@ -213,9 +214,7 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
   const encargadoRows = await db
     .select()
     .from(encargadoObra)
-    .where(
-      or(...rows.map((r) => eq(encargadoObra.obraId, r.obraId))),
-    );
+    .where(or(...rows.map((r) => eq(encargadoObra.obraId, r.obraId))));
 
   // Fetch detalles with catalog names
   const detalleRows = await db
@@ -237,7 +236,7 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
     .where(or(...cotizacionIds.map((id) => eq(cotizacionDetalle.cotizacionId, id))));
 
   // Group by cotizacion
-  const encargadoByObraId = new Map<number, typeof encargadoRows[0]>();
+  const encargadoByObraId = new Map<number, (typeof encargadoRows)[0]>();
   for (const enc of encargadoRows) {
     if (!encargadoByObraId.has(enc.obraId)) encargadoByObraId.set(enc.obraId, enc);
   }
@@ -433,10 +432,9 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
   };
 }
 
-// ─── Update estado ────────────────────────────────────────────────────────────
+// Update estado
 
-export type EstadoCotizacion = typeof cotizacion.$inferSelect['estado'];
-
+export type EstadoCotizacion = (typeof cotizacion.$inferSelect)['estado'];
 
 export async function updateEstadoCotizacion(
   id: number,
@@ -455,18 +453,15 @@ export async function updateEstadoCotizacion(
   // Basic state-machine guardrails
   const allowed: Record<string, EstadoCotizacion[]> = {
     BORRADOR: ['ENVIADA', 'RECHAZADA', 'ANULADA'],
-    ENVIADA:  ['ACEPTADA', 'RECHAZADA', 'ANULADA'],
+    ENVIADA: ['ACEPTADA', 'RECHAZADA', 'ANULADA'],
     ACEPTADA: ['ANULADA'],
     RECHAZADA: ['BORRADOR'],
-    VENCIDA:  ['ANULADA'],
-    ANULADA:  [],
+    VENCIDA: ['ANULADA'],
+    ANULADA: [],
   };
 
   if (!allowed[existing.estado]?.includes(nuevoEstado)) {
-    throw new AppError(
-      `Transición inválida: ${existing.estado} → ${nuevoEstado}.`,
-      422,
-    );
+    throw new AppError(`Transición inválida: ${existing.estado} → ${nuevoEstado}.`, 422);
   }
 
   const [updated] = await db
@@ -479,7 +474,7 @@ export async function updateEstadoCotizacion(
   return updated;
 }
 
-// ─── Update cotización data ───────────────────────────────────────────────────
+// Update cotización data
 
 export interface UpdateQuotationInput {
   // Cliente fields (partial)
@@ -521,30 +516,42 @@ export async function updateQuotation(
       .limit(1);
 
     if (!cot) throw new AppError(`Cotización ${id} no encontrada.`, 404);
-    if (!['BORRADOR', 'RECHAZADA'].includes(cot.estado)) {
-      throw new AppError('Solo se pueden editar cotizaciones en estado BORRADOR o RECHAZADA.', 422);
+    if (!['BORRADOR', 'RECHAZADA', 'ENVIADA'].includes(cot.estado)) {
+      throw new AppError(
+        'Solo se pueden editar cotizaciones en estado BORRADOR, RECHAZADA o ENVIADA.',
+        422,
+      );
     }
 
     // Update observaciones on the cotización itself
     if (input.observaciones !== undefined) {
-      await tx.update(cotizacion).set({ observaciones: input.observaciones, updatedAt: new Date() }).where(eq(cotizacion.id, id));
+      await tx
+        .update(cotizacion)
+        .set({ observaciones: input.observaciones, updatedAt: new Date() })
+        .where(eq(cotizacion.id, id));
     }
 
     // Update cliente
     const clientePatch: Partial<typeof cliente.$inferInsert> = {};
     if (input.giroEmpresa !== undefined) clientePatch.giroEmpresa = input.giroEmpresa;
     if (input.nombreContacto !== undefined) clientePatch.nombreContacto = input.nombreContacto;
-    if (input.apellidosContacto !== undefined) clientePatch.apellidosContacto = input.apellidosContacto;
+    if (input.apellidosContacto !== undefined)
+      clientePatch.apellidosContacto = input.apellidosContacto;
     if (input.celularContacto !== undefined) clientePatch.celularContacto = input.celularContacto;
     if (input.emailContacto !== undefined) clientePatch.email = input.emailContacto;
-    if (input.direccionEmpresa !== undefined) clientePatch.direccionEmpresa = input.direccionEmpresa;
+    if (input.direccionEmpresa !== undefined)
+      clientePatch.direccionEmpresa = input.direccionEmpresa;
     if (input.regionEmpresa !== undefined) clientePatch.region = input.regionEmpresa;
     if (input.comunaEmpresa !== undefined) clientePatch.comuna = input.comunaEmpresa;
     if (input.ciudadEmpresa !== undefined) clientePatch.ciudad = input.ciudadEmpresa;
 
     if (Object.keys(clientePatch).length > 0) {
       // Get clienteId via obra
-      const [obraRow] = await tx.select({ clienteId: obra.clienteId }).from(obra).where(eq(obra.id, cot.obraId)).limit(1);
+      const [obraRow] = await tx
+        .select({ clienteId: obra.clienteId })
+        .from(obra)
+        .where(eq(obra.id, cot.obraId))
+        .limit(1);
       if (obraRow) {
         clientePatch.updatedAt = new Date();
         await tx.update(cliente).set(clientePatch).where(eq(cliente.id, obraRow.clienteId));
@@ -583,7 +590,7 @@ export async function updateQuotation(
   return { id };
 }
 
-// ─── submitWebQuotation (unchanged) ──────────────────────────────────────────
+// submitWebQuotation (unchanged)
 
 export async function submitWebQuotation(
   input: SubmitWebQuotationInput,
@@ -606,16 +613,16 @@ export async function submitWebQuotation(
       await tx
         .update(cliente)
         .set({
-          giroEmpresa:       input.giroEmpresa,
-          nombreContacto:    input.nombreContacto,
+          giroEmpresa: input.giroEmpresa,
+          nombreContacto: input.nombreContacto,
           apellidosContacto: input.apellidosContacto,
-          celularContacto:   input.celularContacto,
-          email:             input.emailContacto,
-          direccionEmpresa:  input.direccionEmpresa,
-          region:            input.regionEmpresa,
-          comuna:            input.comunaEmpresa,
-          ciudad:            input.ciudadEmpresa,
-          updatedAt:         new Date(),
+          celularContacto: input.celularContacto,
+          email: input.emailContacto,
+          direccionEmpresa: input.direccionEmpresa,
+          region: input.regionEmpresa,
+          comuna: input.comunaEmpresa,
+          ciudad: input.ciudadEmpresa,
+          updatedAt: new Date(),
         })
         .where(eq(cliente.id, existingCliente.id));
       clienteId = existingCliente.id;
@@ -623,16 +630,16 @@ export async function submitWebQuotation(
       const [newCliente] = await tx
         .insert(cliente)
         .values({
-          rutEmpresa:        input.rutEmpresa,
-          giroEmpresa:       input.giroEmpresa,
-          nombreContacto:    input.nombreContacto,
+          rutEmpresa: input.rutEmpresa,
+          giroEmpresa: input.giroEmpresa,
+          nombreContacto: input.nombreContacto,
           apellidosContacto: input.apellidosContacto,
-          celularContacto:   input.celularContacto,
-          email:             input.emailContacto,
-          direccionEmpresa:  input.direccionEmpresa,
-          region:            input.regionEmpresa,
-          comuna:            input.comunaEmpresa,
-          ciudad:            input.ciudadEmpresa,
+          celularContacto: input.celularContacto,
+          email: input.emailContacto,
+          direccionEmpresa: input.direccionEmpresa,
+          region: input.regionEmpresa,
+          comuna: input.comunaEmpresa,
+          ciudad: input.ciudadEmpresa,
         })
         .returning({ id: cliente.id });
       clienteId = newCliente.id;
@@ -641,24 +648,24 @@ export async function submitWebQuotation(
     const [newObra] = await tx
       .insert(obra)
       .values({
-        clienteId:         clienteId,
-        nombreObra:        input.nombreObra,
-        nombreMandante:    input.nombreMandante,
+        clienteId: clienteId,
+        nombreObra: input.nombreObra,
+        nombreMandante: input.nombreMandante,
         nombreContratista: input.nombreContratista,
-        ubicacionObra:     input.ubicacionObra,
-        region:            input.regionObra,
-        comuna:            input.comunaObra,
-        ciudad:            input.ciudadObra,
-        duracionMeses:     input.duracionObra,
+        ubicacionObra: input.ubicacionObra,
+        region: input.regionObra,
+        comuna: input.comunaObra,
+        ciudad: input.ciudadObra,
+        duracionMeses: input.duracionObra,
       })
       .returning({ id: obra.id });
 
     const obraId = newObra.id;
 
     await tx.insert(encargadoObra).values({
-      obraId:            obraId,
-      nombreEncargado:   input.nombreEncargado,
-      correoEncargado:   input.correoEncargado,
+      obraId: obraId,
+      nombreEncargado: input.nombreEncargado,
+      correoEncargado: input.correoEncargado,
       telefonoEncargado: input.telefonoEncargado,
     });
 
@@ -668,9 +675,9 @@ export async function submitWebQuotation(
     const [newCotizacion] = await tx
       .insert(cotizacion)
       .values({
-        obraId:        obraId,
-        origen:        'WEB',
-        estado:        'BORRADOR',
+        obraId: obraId,
+        origen: 'WEB',
+        estado: 'BORRADOR',
         observaciones: null,
       })
       .returning({ id: cotizacion.id });
@@ -681,27 +688,59 @@ export async function submitWebQuotation(
       const detallesToInsert: (typeof cotizacionDetalle.$inferInsert)[] = [];
 
       for (const line of input.ensayos) {
-        const areaNorm    = line.area.trim().normalize('NFC');
+        const areaNorm = line.area.trim().normalize('NFC');
         const subareaNorm = line.subarea.trim().normalize('NFC');
-        const ensayoNorm  = line.ensayo.trim().normalize('NFC');
+        const ensayoNorm = line.ensayo.trim().normalize('NFC');
 
-        const [matchedArea] = await tx.select({ id: areaEnsayo.id }).from(areaEnsayo).where(ilike(areaEnsayo.nombreArea, areaNorm)).limit(1);
+        const [matchedArea] = await tx
+          .select({ id: areaEnsayo.id })
+          .from(areaEnsayo)
+          .where(ilike(areaEnsayo.nombreArea, areaNorm))
+          .limit(1);
         if (!matchedArea) continue;
 
-        const [matchedSubarea] = await tx.select({ id: subareaEnsayo.id }).from(subareaEnsayo).where(and(eq(subareaEnsayo.areaId, matchedArea.id), ilike(subareaEnsayo.nombreSubarea, subareaNorm))).limit(1);
+        const [matchedSubarea] = await tx
+          .select({ id: subareaEnsayo.id })
+          .from(subareaEnsayo)
+          .where(
+            and(
+              eq(subareaEnsayo.areaId, matchedArea.id),
+              ilike(subareaEnsayo.nombreSubarea, subareaNorm),
+            ),
+          )
+          .limit(1);
         if (!matchedSubarea) continue;
 
-        const [matchedTipo] = await tx.select({ id: tipoEnsayo.id }).from(tipoEnsayo).where(and(eq(tipoEnsayo.subareaId, matchedSubarea.id), ilike(tipoEnsayo.nombreTipoEnsayo, ensayoNorm))).limit(1);
+        const [matchedTipo] = await tx
+          .select({ id: tipoEnsayo.id })
+          .from(tipoEnsayo)
+          .where(
+            and(
+              eq(tipoEnsayo.subareaId, matchedSubarea.id),
+              ilike(tipoEnsayo.nombreTipoEnsayo, ensayoNorm),
+            ),
+          )
+          .limit(1);
         if (!matchedTipo) continue;
 
-        const [activePrecio] = await tx.select({ precio: precioEnsayo.precio }).from(precioEnsayo).where(and(eq(precioEnsayo.tipoEnsayoId, matchedTipo.id), eq(precioEnsayo.activo, true), isNull(precioEnsayo.fechaFin))).limit(1);
+        const [activePrecio] = await tx
+          .select({ precio: precioEnsayo.precio })
+          .from(precioEnsayo)
+          .where(
+            and(
+              eq(precioEnsayo.tipoEnsayoId, matchedTipo.id),
+              eq(precioEnsayo.activo, true),
+              isNull(precioEnsayo.fechaFin),
+            ),
+          )
+          .limit(1);
 
         detallesToInsert.push({
-          cotizacionId:    cotizacionId,
-          tipoEnsayoId:    matchedTipo.id,
+          cotizacionId: cotizacionId,
+          tipoEnsayoId: matchedTipo.id,
           cantidadEnsayos: line.cantidad,
           cantidadVisitas: line.visitas,
-          precioUnitario:  activePrecio?.precio ?? '0',
+          precioUnitario: activePrecio?.precio ?? '0',
         });
       }
 
