@@ -4,6 +4,7 @@
  *
  * Base path: /api/catalog  (mounted in routes/index.ts)
  *
+ * POST   /areas        → create a new area
  * POST   /ensayos      → create a complete test entry (area + subarea + tipo + precio)
  * GET    /areas        → full catalog tree (areas → subareas → tipos + active price)
  * GET    /ensayos      → paginated flat list with optional filters
@@ -14,6 +15,7 @@
 
 import { Router } from 'express';
 import {
+  createAreaHandler,
   createEnsayoHandler,
   getCatalogTreeHandler,
   listEnsayosHandler,
@@ -24,6 +26,7 @@ import {
 
 export const catalogRouter = Router();
 
+catalogRouter.post('/areas',       createAreaHandler);
 catalogRouter.post('/ensayos',      createEnsayoHandler);
 catalogRouter.get('/areas',         getCatalogTreeHandler);
 catalogRouter.get('/ensayos',       listEnsayosHandler);
