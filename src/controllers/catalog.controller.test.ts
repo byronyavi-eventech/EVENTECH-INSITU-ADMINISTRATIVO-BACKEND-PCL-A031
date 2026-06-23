@@ -84,7 +84,7 @@ const LIST_RESULT = {
 const app = buildApp();
 
 /** Casts an imported mock to the correct vitest mock type. */
-function asMock<T extends (...args: unknown[]) => unknown>(fn: T) {
+function asMock<T extends (...args: any[]) => any>(fn: T) {
   return fn as unknown as ReturnType<typeof vi.fn>;
 }
 

@@ -1,18 +1,24 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { submitWebQuotation } from '../services/quotation.service.js';
+import React from 'react';
+import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer';
+import {
+  submitWebQuotation,
+  listQuotations,
+  updateEstadoCotizacion,
+  updateQuotation,
+  getCotizacionById,
+  EstadoCotizacion,
+} from '../services/quotation.service.js';
+import { sendCotizacionEmail } from '../services/email.service.js';
+import { CotizacionDocument } from '../pdf/cotizacion-document.js';
 import { AppError } from '../utils/app-error.js';
-
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>;
 
 const wrap = (fn: AsyncHandler): AsyncHandler =>
   async (req, res, next) => {
-    try {
-      await fn(req, res, next);
-    } catch (err) {
-      next(err);
-    }
+    try { await fn(req, res, next); } catch (err) { next(err); }
   };
 
 function assertValid<T>(
@@ -27,6 +33,8 @@ function assertValid<T>(
 
 const phoneRegex = /^(\+?56)?\s?9\s?[0-9]{4}\s?[0-9]{4}$/;
 
+// ─── POST /quotations/web ─────────────────────────────────────────────────────
+
 const ensayoLineSchema = z.object({
   area:     z.string().trim().min(1, '"area" es requerido'),
   subarea:  z.string().trim().min(1, '"subarea" es requerido'),
@@ -36,142 +44,158 @@ const ensayoLineSchema = z.object({
 });
 
 const submitWebQuotationSchema = z.object({
-  //  Step 1
-  rutEmpresa: z
-    .string({ error: '"rutEmpresa" es requerido.' })
-    .trim()
-    .min(1, '"rutEmpresa" no puede estar vacío.'),
-
-  giroEmpresa: z
-    .string({ error: '"giroEmpresa" es requerido.' })
-    .trim()
-    .min(2,  '"giroEmpresa" debe tener al menos 2 caracteres.')
-    .max(255, '"giroEmpresa" no puede exceder 255 caracteres.'),
-
-  nombreContacto: z
-    .string({ error: '"nombreContacto" es requerido.' })
-    .trim()
-    .min(2, '"nombreContacto" debe tener al menos 2 caracteres.')
-    .max(100, '"nombreContacto" no puede exceder 100 caracteres.'),
-
-  apellidosContacto: z
-    .string({ error: '"apellidosContacto" es requerido.' })
-    .trim()
-    .min(2, '"apellidosContacto" debe tener al menos 2 caracteres.')
-    .max(150, '"apellidosContacto" no puede exceder 150 caracteres.'),
-
-  celularContacto: z
-    .string({ error: '"celularContacto" es requerido.' })
-    .trim()
-    .regex(phoneRegex, '"celularContacto": formato inválido (Ej: +569 1234 5678).'),
-
-  emailContacto: z
-    .string({ error: '"emailContacto" es requerido.' })
-    .trim()
-    .email('"emailContacto" no es un email válido.')
-    .max(150, '"emailContacto" no puede exceder 150 caracteres.')
-    .transform((s) => s.toLowerCase()),
-
-  direccionEmpresa: z
-    .string({ error: '"direccionEmpresa" es requerido.' })
-    .trim()
-    .min(5, '"direccionEmpresa" debe tener al menos 5 caracteres.')
-    .max(250, '"direccionEmpresa" no puede exceder 250 caracteres.'),
-
-  regionEmpresa: z
-    .string({ error: '"regionEmpresa" es requerido.' })
-    .trim()
-    .min(1, '"regionEmpresa" no puede estar vacío.')
-    .max(100, '"regionEmpresa" no puede exceder 100 caracteres.'),
-
-  comunaEmpresa: z
-    .string({ error: '"comunaEmpresa" es requerido.' })
-    .trim()
-    .min(1, '"comunaEmpresa" no puede estar vacío.')
-    .max(100, '"comunaEmpresa" no puede exceder 100 caracteres.'),
-
-  ciudadEmpresa: z
-    .string({ error: '"ciudadEmpresa" es requerido.' })
-    .trim()
-    .min(2, '"ciudadEmpresa" debe tener al menos 2 caracteres.')
-    .max(100, '"ciudadEmpresa" no puede exceder 100 caracteres.'),
-
-  //  Step 2
-  nombreObra: z
-    .string({ error: '"nombreObra" es requerido.' })
-    .trim()
-    .min(2, '"nombreObra" debe tener al menos 2 caracteres.')
-    .max(200, '"nombreObra" no puede exceder 200 caracteres.'),
-
-  nombreMandante: z
-    .string({ error: '"nombreMandante" es requerido.' })
-    .trim()
-    .min(2, '"nombreMandante" debe tener al menos 2 caracteres.')
-    .max(200, '"nombreMandante" no puede exceder 200 caracteres.'),
-
-  nombreContratista: z
-    .string({ error: '"nombreContratista" es requerido.' })
-    .trim()
-    .min(2, '"nombreContratista" debe tener al menos 2 caracteres.')
-    .max(200, '"nombreContratista" no puede exceder 200 caracteres.'),
-
-  ubicacionObra: z
-    .string({ error: '"ubicacionObra" es requerido.' })
-    .trim()
-    .min(5, '"ubicacionObra" debe tener al menos 5 caracteres.')
-    .max(300, '"ubicacionObra" no puede exceder 300 caracteres.'),
-
-  regionObra: z
-    .string({ error: '"regionObra" es requerido.' })
-    .trim()
-    .min(1, '"regionObra" no puede estar vacío.')
-    .max(100, '"regionObra" no puede exceder 100 caracteres.'),
-
-  comunaObra: z
-    .string({ error: '"comunaObra" es requerido.' })
-    .trim()
-    .min(1, '"comunaObra" no puede estar vacío.')
-    .max(100, '"comunaObra" no puede exceder 100 caracteres.'),
-
-  ciudadObra: z
-    .string({ error: '"ciudadObra" es requerido.' })
-    .trim()
-    .min(2, '"ciudadObra" debe tener al menos 2 caracteres.')
-    .max(100, '"ciudadObra" no puede exceder 100 caracteres.'),
-
-  duracionObra: z.coerce
-    .number({ error: '"duracionObra" debe ser un número.' })
-    .int()
-    .min(1, '"duracionObra" debe ser al menos 1 mes.'),
-
-  //  Step 3
-  nombreEncargado: z
-    .string({ error: '"nombreEncargado" es requerido.' })
-    .trim()
-    .min(2, '"nombreEncargado" debe tener al menos 2 caracteres.')
-    .max(150, '"nombreEncargado" no puede exceder 150 caracteres.'),
-
-  correoEncargado: z
-    .string({ error: '"correoEncargado" es requerido.' })
-    .trim()
-    .email('"correoEncargado" no es un email válido.')
-    .max(150, '"correoEncargado" no puede exceder 150 caracteres.')
-    .transform((s) => s.toLowerCase()),
-
-  telefonoEncargado: z
-    .string({ error: '"telefonoEncargado" es requerido.' })
-    .trim()
-    .regex(phoneRegex, '"telefonoEncargado": formato inválido (Ej: +569 1234 5678).'),
-
-  //  Step 4
-  ensayos: z
-    .array(ensayoLineSchema)
-    .min(1, 'Debe incluir al menos un ensayo.'),
+  rutEmpresa:        z.string().trim().min(1),
+  giroEmpresa:       z.string().trim().min(2).max(255),
+  nombreContacto:    z.string().trim().min(2).max(100),
+  apellidosContacto: z.string().trim().min(2).max(150),
+  celularContacto:   z.string().trim().regex(phoneRegex),
+  emailContacto:     z.string().trim().email().max(150).transform((s) => s.toLowerCase()),
+  direccionEmpresa:  z.string().trim().min(5).max(250),
+  regionEmpresa:     z.string().trim().min(1).max(100),
+  comunaEmpresa:     z.string().trim().min(1).max(100),
+  ciudadEmpresa:     z.string().trim().min(2).max(100),
+  nombreObra:        z.string().trim().min(2).max(200),
+  nombreMandante:    z.string().trim().min(2).max(200),
+  nombreContratista: z.string().trim().min(2).max(200),
+  ubicacionObra:     z.string().trim().min(5).max(300),
+  regionObra:        z.string().trim().min(1).max(100),
+  comunaObra:        z.string().trim().min(1).max(100),
+  ciudadObra:        z.string().trim().min(2).max(100),
+  duracionObra:      z.coerce.number().int().min(1),
+  nombreEncargado:   z.string().trim().min(2).max(150),
+  correoEncargado:   z.string().trim().email().max(150).transform((s) => s.toLowerCase()),
+  telefonoEncargado: z.string().trim().regex(phoneRegex),
+  ensayos:           z.array(ensayoLineSchema).min(1),
 });
-
 
 export const submitWebQuotationHandler: AsyncHandler = wrap(async (req, res) => {
   const body = assertValid(submitWebQuotationSchema.safeParse(req.body));
   const data = await submitWebQuotation(body);
   res.status(201).json({ status: 'success', data });
+});
+
+// ─── GET /quotations ──────────────────────────────────────────────────────────
+
+const listSchema = z.object({
+  estado: z.string().optional(),
+  q:      z.string().optional(),
+  page:   z.coerce.number().int().min(1).default(1),
+  limit:  z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const listQuotationsHandler: AsyncHandler = wrap(async (req, res) => {
+  const query = assertValid(listSchema.safeParse(req.query));
+  const result = await listQuotations(query);
+  res.json({ status: 'success', ...result });
+});
+
+// ─── PATCH /quotations/:id/estado ─────────────────────────────────────────────
+
+const VALID_ESTADOS: EstadoCotizacion[] = [
+  'BORRADOR', 'ENVIADA', 'ACEPTADA', 'RECHAZADA', 'VENCIDA', 'ANULADA',
+];
+
+const updateEstadoSchema = z.object({
+  estado: z.enum(VALID_ESTADOS as [EstadoCotizacion, ...EstadoCotizacion[]], {
+    error: `"estado" debe ser uno de: ${VALID_ESTADOS.join(', ')}`,
+  }),
+});
+
+export const updateEstadoHandler: AsyncHandler = wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) throw new AppError('ID inválido.', 400);
+
+  const { estado } = assertValid(updateEstadoSchema.safeParse(req.body));
+  const data = await updateEstadoCotizacion(id, estado);
+  res.json({ status: 'success', data });
+});
+
+// ─── PUT /quotations/:id ──────────────────────────────────────────────────────
+
+const detalleUpdateSchema = z.object({
+  tipoEnsayoId:    z.coerce.number().int().min(1),
+  cantidadEnsayos: z.coerce.number().int().min(1),
+  cantidadVisitas: z.coerce.number().int().min(1),
+  precioUnitario:  z.string().trim().min(1),
+});
+
+const updateQuotationSchema = z.object({
+  giroEmpresa:       z.string().trim().min(2).max(255).optional(),
+  nombreContacto:    z.string().trim().min(2).max(100).optional(),
+  apellidosContacto: z.string().trim().min(2).max(150).optional(),
+  celularContacto:   z.string().trim().regex(phoneRegex).optional(),
+  emailContacto:     z.string().trim().email().max(150).transform((s) => s.toLowerCase()).optional(),
+  direccionEmpresa:  z.string().trim().min(5).max(250).optional(),
+  regionEmpresa:     z.string().trim().min(1).max(100).optional(),
+  comunaEmpresa:     z.string().trim().min(1).max(100).optional(),
+  ciudadEmpresa:     z.string().trim().min(2).max(100).optional(),
+  nombreEncargado:   z.string().trim().min(2).max(150).optional(),
+  correoEncargado:   z.string().trim().email().max(150).optional(),
+  telefonoEncargado: z.string().trim().regex(phoneRegex).optional(),
+  observaciones:     z.string().trim().optional(),
+  detalles:          z.array(detalleUpdateSchema).min(1).optional(),
+});
+
+export const updateQuotationHandler: AsyncHandler = wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) throw new AppError('ID inválido.', 400);
+
+  const body = assertValid(updateQuotationSchema.safeParse(req.body));
+  const data = await updateQuotation(id, body);
+  res.json({ status: 'success', data });
+});
+
+// ─── GET /quotations/:id/pdf ──────────────────────────────────────────────────
+
+export const getPdfHandler: AsyncHandler = wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) throw new AppError('ID inválido.', 400);
+
+  const cotizacion = await getCotizacionById(id);
+
+  if (cotizacion.estado !== 'ACEPTADA') {
+    throw new AppError(
+      'Solo se puede generar PDF de cotizaciones en estado ACEPTADA.',
+      422,
+    );
+  }
+
+  const pdfBuffer = await renderToBuffer(
+    React.createElement(CotizacionDocument, { cotizacion }) as React.ReactElement<DocumentProps>,
+  );
+
+  const docCode =
+    cotizacion.codigoCotizacion ??
+    `COT-${String(cotizacion.id).padStart(5, '0')}`;
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader(
+    'Content-Disposition',
+    `inline; filename="cotizacion-${docCode}.pdf"`,
+  );
+  res.setHeader('Content-Length', pdfBuffer.length);
+  res.end(pdfBuffer);
+});
+
+// ─── POST /quotations/:id/send-email ─────────────────────────────────────────
+
+export const sendEmailHandler: AsyncHandler = wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) throw new AppError('ID inválido.', 400);
+
+  const cotizacion = await getCotizacionById(id);
+
+  if (cotizacion.estado !== 'ACEPTADA') {
+    throw new AppError(
+      'Solo se puede enviar email de cotizaciones en estado ACEPTADA.',
+      422,
+    );
+  }
+
+  await sendCotizacionEmail(cotizacion);
+
+  res.json({
+    status: 'success',
+    message: `Email enviado a ${cotizacion.cliente.email}`,
+  });
 });
