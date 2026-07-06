@@ -36,6 +36,7 @@ export const auth = betterAuth({
       }
     },
   },
+  baseUrl: process.env.BETTER_AUTH_URL as string,
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,

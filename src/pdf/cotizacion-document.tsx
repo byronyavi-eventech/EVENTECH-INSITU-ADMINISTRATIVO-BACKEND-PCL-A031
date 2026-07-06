@@ -271,7 +271,7 @@ export function CotizacionDocument({ cotizacion }: CotizacionDocumentProps) {
   return (
     <Document
       title={`Cotización ${docCode}`}
-      author="Laboratorios Insitu"
+      author="Laboratorio Insitu"
       subject="Cotización de servicios de ensayos"
     >
       <Page size="A4" style={styles.page} wrap>

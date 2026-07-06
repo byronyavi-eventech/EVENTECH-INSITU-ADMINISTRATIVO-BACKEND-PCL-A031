@@ -39,7 +39,7 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cotización ${docCode} — Laboratorios Insitu</title>
+  <title>Cotización ${docCode} — Laboratorio Insitu</title>
 </head>
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:system-ui,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0;">
@@ -49,17 +49,17 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
 
           <!-- Header -->
           <tr>
-            <td style="background:#1a56db;padding:28px 36px;">
+            <td style="background:#ffffff;padding:28px 36px;border-bottom:2px solid #c8102e;">
               <table width="100%">
                 <tr>
                   <td>
-                    <p style="margin:0;font-size:22px;font-weight:800;color:#ffffff;letter-spacing:1px;">INSITU</p>
-                    <p style="margin:4px 0 0;font-size:12px;color:#bfdbfe;">Laboratorio de Ensayos y Calidad</p>
+                    <p style="margin:0;font-size:24px;font-weight:900;color:#c8102e;letter-spacing:1px;">INSITU</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">Laboratorio de Ensayos y Calidad</p>
                   </td>
                   <td align="right">
-                    <p style="margin:0;font-size:18px;font-weight:700;color:#ffffff;">COTIZACIÓN</p>
-                    <p style="margin:4px 0 0;font-size:12px;color:#bfdbfe;">${docCode}</p>
-                    <span style="display:inline-block;margin-top:8px;background:#ffffff20;border:1px solid #93c5fd;color:#bfdbfe;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">✓ ACEPTADA / FIRMADA</span>
+                    <p style="margin:0;font-size:14px;font-weight:700;color:#111827;">COTIZACIÓN DE ENSAYOS Y SERVICIOS</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#c8102e;font-weight:700;">Nº ${docCode}</p>
+                    <span style="display:inline-block;margin-top:8px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">✓ ACEPTADA / FIRMADA</span>
                   </td>
                 </tr>
               </table>
@@ -71,7 +71,7 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
             <td style="padding:28px 36px 0;">
               <p style="margin:0;font-size:15px;color:#111827;">Estimado/a <strong>${cotizacion.cliente.nombreContacto} ${cotizacion.cliente.apellidosContacto}</strong>,</p>
               <p style="margin:10px 0 0;font-size:14px;color:#6b7280;line-height:1.6;">
-                Nos complace informarle que la siguiente cotización de servicios de ensayos para la obra
+                Nos complace informarle que la cotización de servicios de ensayos para la obra
                 <strong style="color:#111827;">${cotizacion.obra.nombreObra}</strong> ha sido aprobada y firmada.
                 Adjunto a este correo encontrará el documento PDF con todos los detalles.
               </p>
@@ -80,22 +80,26 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
 
           <!-- Datos cliente / obra -->
           <tr>
-            <td style="padding:20px 36px 0;">
+            <td style="padding:24px 36px 0;">
+              <div style="background:#fffbeb;padding:8px 12px;margin-bottom:12px;border-radius:4px;border-left:3px solid #f5a623;">
+                <p style="margin:0;font-size:11px;font-weight:700;color:#c8102e;text-transform:uppercase;letter-spacing:.5px;">Datos Cotizante y Obra</p>
+              </div>
               <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
-                <tr style="background:#f9fafb;">
-                  <td style="padding:10px 16px;font-size:11px;font-weight:700;color:#1a56db;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e5e7eb;" colspan="2">Datos del cliente</td>
-                </tr>
                 <tr>
-                  <td style="padding:8px 16px;font-size:12px;color:#6b7280;width:40%;">Empresa</td>
-                  <td style="padding:8px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.cliente.giroEmpresa}</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;width:40%;">Empresa / Razón Social</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.cliente.giroEmpresa}</td>
                 </tr>
                 <tr style="background:#f9fafb;">
-                  <td style="padding:8px 16px;font-size:12px;color:#6b7280;">Contacto</td>
-                  <td style="padding:8px 16px;font-size:12px;color:#111827;">${cotizacion.cliente.nombreContacto} ${cotizacion.cliente.apellidosContacto}</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Contacto</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.cliente.nombreContacto} ${cotizacion.cliente.apellidosContacto}</td>
                 </tr>
                 <tr>
-                  <td style="padding:8px 16px;font-size:12px;color:#6b7280;">Obra</td>
-                  <td style="padding:8px 16px;font-size:12px;color:#111827;">${cotizacion.obra.nombreObra}</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Obra</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.obra.nombreObra}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Ubicación</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.obra.ubicacionObra}</td>
                 </tr>
               </table>
             </td>
@@ -103,12 +107,14 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
 
           <!-- Tabla ensayos -->
           <tr>
-            <td style="padding:20px 36px 0;">
-              <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#1a56db;text-transform:uppercase;letter-spacing:.5px;">Detalle de ensayos</p>
+            <td style="padding:24px 36px 0;">
+              <div style="background:#fffbeb;padding:8px 12px;margin-bottom:12px;border-radius:4px;border-left:3px solid #f5a623;">
+                <p style="margin:0;font-size:11px;font-weight:700;color:#c8102e;text-transform:uppercase;letter-spacing:.5px;">Métodos de Ensayo Cotizados</p>
+              </div>
               <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
                 <thead>
-                  <tr style="background:#1a56db;">
-                    <th style="padding:10px 12px;font-size:11px;color:#fff;text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Ensayo</th>
+                  <tr style="background:#c8102e;">
+                    <th style="padding:10px 12px;font-size:11px;color:#fff;text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Tipo de Ensayo</th>
                     <th style="padding:10px 12px;font-size:11px;color:#fff;text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Área</th>
                     <th style="padding:10px 12px;font-size:11px;color:#fff;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Cant.</th>
                     <th style="padding:10px 12px;font-size:11px;color:#fff;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Visitas</th>
@@ -125,13 +131,13 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
 
           <!-- Total -->
           <tr>
-            <td style="padding:12px 36px 0;">
+            <td style="padding:16px 36px 0;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td></td>
-                  <td align="right" style="border-top:2px solid #1a56db;padding-top:10px;">
-                    <p style="margin:0;font-size:12px;color:#6b7280;">Total Estimado</p>
-                    <p style="margin:4px 0 0;font-size:22px;font-weight:800;color:#1a56db;">UF ${total}</p>
+                  <td align="right" style="border-top:2px solid #c8102e;padding-top:12px;">
+                    <p style="margin:0;font-size:12px;color:#111827;font-weight:700;text-transform:uppercase;">Total Estimado</p>
+                    <p style="margin:4px 0 0;font-size:24px;font-weight:800;color:#c8102e;">UF ${total}</p>
                   </td>
                 </tr>
               </table>
@@ -140,13 +146,13 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
 
           <!-- CTA -->
           <tr>
-            <td style="padding:24px 36px;">
+            <td style="padding:32px 36px 24px;">
               <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
                 Para cualquier consulta, no dude en contactarnos respondiendo este correo o llamando a nuestras oficinas.
               </p>
               <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">
                 Atentamente,<br/>
-                <strong style="color:#111827;">Equipo Laboratorios Insitu</strong>
+                <strong style="color:#111827;">Equipo Laboratorio Insitu</strong>
               </p>
             </td>
           </tr>
@@ -156,8 +162,7 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
             <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:16px 36px;">
               <table width="100%">
                 <tr>
-                  <td style="font-size:11px;color:#9ca3af;">© ${new Date().getFullYear()} Laboratorios Insitu · laboratorioinsitu.cl</td>
-                  <td align="right" style="font-size:11px;color:#059669;font-weight:600;">✓ Cotización Aceptada</td>
+                  <td style="font-size:11px;color:#9ca3af;">© ${new Date().getFullYear()} Laboratorio Insitu · www.laboratorioinsitu.cl</td>
                 </tr>
               </table>
             </td>
@@ -188,7 +193,7 @@ export async function sendCotizacionEmail(cotizacion: QuotationListItem): Promis
   const { error } = await resend.emails.send({
     from: FROM,
     to: [cotizacion.cliente.email],
-    subject: `Cotización ${docCode} — Laboratorios Insitu`,
+    subject: `Cotización ${docCode} — Laboratorio Insitu`,
     html: buildEmailHtml(cotizacion),
     attachments: [
       {
