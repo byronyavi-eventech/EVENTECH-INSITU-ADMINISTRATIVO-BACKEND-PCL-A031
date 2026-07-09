@@ -373,10 +373,10 @@ export function CotizacionDocument({ cotizacion }: CotizacionDocumentProps) {
           </View>
         </View>
 
-        {/* ── SERVICIOS ASOCIADOS A LOS ENSAYES ── */}
+        {/* ── SERVICIOS ASOCIADOS A LOS ENSAYOS ── */}
         <View style={styles.section} wrap={false}>
           <View style={styles.sectionTitleBox}>
-             <Text style={styles.sectionTitle}>5.- Servicios Asociados a los Ensayes</Text>
+             <Text style={styles.sectionTitle}>5.- Servicios Asociados a los Ensayos</Text>
           </View>
           <View style={styles.table}>
             <View style={styles.tableHeader}>
