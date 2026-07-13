@@ -119,6 +119,12 @@ const detalleUpdateSchema = z.object({
   precioUnitario:  z.string().trim().min(1),
 });
 
+const servicioGeneralUpdateSchema = z.object({
+  descripcion:     z.string().trim().min(1).max(255),
+  cantidad:        z.coerce.number().int().min(0),
+  precioUnitario:  z.string().trim().min(1),
+});
+
 const updateQuotationSchema = z.object({
   giroEmpresa:       z.string().trim().min(2).max(255).optional(),
   nombreContacto:    z.string().trim().min(2).max(100).optional(),
@@ -134,6 +140,7 @@ const updateQuotationSchema = z.object({
   telefonoEncargado: z.string().trim().regex(phoneRegex).optional(),
   observaciones:     z.string().trim().optional(),
   detalles:          z.array(detalleUpdateSchema).min(1).optional(),
+  serviciosGenerales: z.array(servicioGeneralUpdateSchema).optional(),
 });
 
 export const updateQuotationHandler: AsyncHandler = wrap(async (req, res) => {
@@ -166,7 +173,7 @@ export const getPdfHandler: AsyncHandler = wrap(async (req, res) => {
 
   const docCode =
     cotizacion.codigoCotizacion ??
-    `COT-${String(cotizacion.id).padStart(5, '0')}`;
+    `${String(cotizacion.id + 9999)}-LIA`;
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader(

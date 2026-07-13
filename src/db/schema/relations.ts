@@ -21,7 +21,7 @@ import {
   tipoEnsayo,
   precioEnsayo,
 } from './catalog.schema.js';
-import { cotizacion, cotizacionDetalle } from './quotation.schema.js';
+import { cotizacion, cotizacionDetalle, cotizacionServicioGeneral } from './quotation.schema.js';
 
 // ---------------------------------------------------------------------------
 // Better Auth tables
@@ -146,6 +146,7 @@ export const cotizacionRelations = relations(cotizacion, ({ one, many }) => ({
     references: [user.id],
   }),
   detalles: many(cotizacionDetalle),
+  serviciosGenerales: many(cotizacionServicioGeneral),
 }));
 
 export const cotizacionDetalleRelations = relations(
@@ -158,6 +159,16 @@ export const cotizacionDetalleRelations = relations(
     tipoEnsayo: one(tipoEnsayo, {
       fields: [cotizacionDetalle.tipoEnsayoId],
       references: [tipoEnsayo.id],
+    }),
+  }),
+);
+
+export const cotizacionServicioGeneralRelations = relations(
+  cotizacionServicioGeneral,
+  ({ one }) => ({
+    cotizacion: one(cotizacion, {
+      fields: [cotizacionServicioGeneral.cotizacionId],
+      references: [cotizacion.id],
     }),
   }),
 );

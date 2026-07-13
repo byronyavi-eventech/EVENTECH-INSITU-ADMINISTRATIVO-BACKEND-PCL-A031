@@ -18,7 +18,7 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
     )
     .toFixed(2);
 
-  const docCode = cotizacion.codigoCotizacion ?? `COT-${String(cotizacion.id).padStart(5, '0')}`;
+  const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
 
   const ensayosRows = cotizacion.detalles
     .map(
@@ -182,7 +182,7 @@ export async function sendCotizacionEmail(cotizacion: QuotationListItem): Promis
     'email.service: sendCotizacionEmail start',
   );
 
-  const docCode = cotizacion.codigoCotizacion ?? `COT-${String(cotizacion.id).padStart(5, '0')}`;
+  const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
 
   // Generate PDF buffer
   const pdfBuffer = await renderToBuffer(

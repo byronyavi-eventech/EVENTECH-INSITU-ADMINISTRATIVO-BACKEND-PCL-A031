@@ -141,7 +141,46 @@ export const cotizacionDetalle = pgTable(
   ],
 );
 
+/**
+ * `tbl_cotizacion_servicio_general` → `cotizacion_servicio_general`
+ *
+ * General/additional service line items within a quotation.
+ * Unlike ensayos, these are free-form descriptions with a locked-in price
+ * and a quantity (e.g. "Copia de informe", "Valor hora adicional en terreno").
+ */
+export const cotizacionServicioGeneral = pgTable(
+  'cotizacion_servicio_general',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    cotizacionId: bigserial('cotizacion_id', { mode: 'number' })
+      .notNull()
+      .references(() => cotizacion.id, { onDelete: 'cascade' }),
+
+    descripcion: varchar('descripcion', { length: 255 }).notNull(),
+    cantidad: integer('cantidad').notNull().default(1),
+
+    // Price locked at the time of addition — matches the business convention
+    // used in cotizacion_detalle.
+    precioUnitario: numeric('precio_unitario', {
+      precision: 12,
+      scale: 2,
+    }).notNull(),
+
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index('cotizacion_servicio_general_cotizacion_id_idx').on(t.cotizacionId),
+  ],
+);
+
 export type Cotizacion = typeof cotizacion.$inferSelect;
 export type NewCotizacion = typeof cotizacion.$inferInsert;
 export type CotizacionDetalle = typeof cotizacionDetalle.$inferSelect;
 export type NewCotizacionDetalle = typeof cotizacionDetalle.$inferInsert;
+export type CotizacionServicioGeneral = typeof cotizacionServicioGeneral.$inferSelect;
+export type NewCotizacionServicioGeneral = typeof cotizacionServicioGeneral.$inferInsert;

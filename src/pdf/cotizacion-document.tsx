@@ -266,7 +266,7 @@ export function CotizacionDocument({ cotizacion }: CotizacionDocumentProps) {
     0,
   );
 
-  const docCode = cotizacion.codigoCotizacion ?? `COT-${String(cotizacion.id).padStart(5, '0')}`;
+  const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
 
   return (
     <Document
