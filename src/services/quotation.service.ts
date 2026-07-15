@@ -5,6 +5,7 @@ import {
   encargadoObra,
   cotizacion,
   cotizacionDetalle,
+  cotizacionServicioGeneral,
   tipoEnsayo,
   subareaEnsayo,
   areaEnsayo,
@@ -108,6 +109,12 @@ export interface QuotationListItem {
     nombreSubarea: string;
     cantidadEnsayos: number;
     cantidadVisitas: number;
+    precioUnitario: string;
+  }>;
+  serviciosGenerales: Array<{
+    id: number;
+    descripcion: string;
+    cantidad: number;
     precioUnitario: string;
   }>;
 }
@@ -235,6 +242,18 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
     .innerJoin(areaEnsayo, eq(subareaEnsayo.areaId, areaEnsayo.id))
     .where(or(...cotizacionIds.map((id) => eq(cotizacionDetalle.cotizacionId, id))));
 
+  // Fetch servicios generales
+  const servicioRows = await db
+    .select({
+      id: cotizacionServicioGeneral.id,
+      cotizacionId: cotizacionServicioGeneral.cotizacionId,
+      descripcion: cotizacionServicioGeneral.descripcion,
+      cantidad: cotizacionServicioGeneral.cantidad,
+      precioUnitario: cotizacionServicioGeneral.precioUnitario,
+    })
+    .from(cotizacionServicioGeneral)
+    .where(or(...cotizacionIds.map((id) => eq(cotizacionServicioGeneral.cotizacionId, id))));
+
   // Group by cotizacion
   const encargadoByObraId = new Map<number, (typeof encargadoRows)[0]>();
   for (const enc of encargadoRows) {
@@ -246,6 +265,13 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
     const arr = detallesByCotizacionId.get(det.cotizacionId) ?? [];
     arr.push(det);
     detallesByCotizacionId.set(det.cotizacionId, arr);
+  }
+
+  const serviciosByCotizacionId = new Map<number, typeof servicioRows>();
+  for (const srv of servicioRows) {
+    const arr = serviciosByCotizacionId.get(srv.cotizacionId) ?? [];
+    arr.push(srv);
+    serviciosByCotizacionId.set(srv.cotizacionId, arr);
   }
 
   const data: QuotationListItem[] = rows.map((r) => {
@@ -299,6 +325,12 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
         cantidadEnsayos: d.cantidadEnsayos,
         cantidadVisitas: d.cantidadVisitas,
         precioUnitario: d.precioUnitario,
+      })),
+      serviciosGenerales: (serviciosByCotizacionId.get(r.id) ?? []).map((s) => ({
+        id: s.id,
+        descripcion: s.descripcion,
+        cantidad: s.cantidad,
+        precioUnitario: s.precioUnitario,
       })),
     };
   });
@@ -379,6 +411,17 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
     .innerJoin(areaEnsayo, eq(subareaEnsayo.areaId, areaEnsayo.id))
     .where(eq(cotizacionDetalle.cotizacionId, id));
 
+  const servicioGeneralRows = await db
+    .select({
+      id: cotizacionServicioGeneral.id,
+      cotizacionId: cotizacionServicioGeneral.cotizacionId,
+      descripcion: cotizacionServicioGeneral.descripcion,
+      cantidad: cotizacionServicioGeneral.cantidad,
+      precioUnitario: cotizacionServicioGeneral.precioUnitario,
+    })
+    .from(cotizacionServicioGeneral)
+    .where(eq(cotizacionServicioGeneral.cotizacionId, id));
+
   return {
     id: row.id,
     codigoCotizacion: row.codigoCotizacion,
@@ -428,6 +471,12 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
       cantidadEnsayos: d.cantidadEnsayos,
       cantidadVisitas: d.cantidadVisitas,
       precioUnitario: d.precioUnitario,
+    })),
+    serviciosGenerales: servicioGeneralRows.map((s) => ({
+      id: s.id,
+      descripcion: s.descripcion,
+      cantidad: s.cantidad,
+      precioUnitario: s.precioUnitario,
     })),
   };
 }
@@ -498,6 +547,12 @@ export interface UpdateQuotationInput {
     tipoEnsayoId: number;
     cantidadEnsayos: number;
     cantidadVisitas: number;
+    precioUnitario: string;
+  }>;
+  // Servicios generales — replace all when provided
+  serviciosGenerales?: Array<{
+    descripcion: string;
+    cantidad: number;
     precioUnitario: string;
   }>;
 }
@@ -580,6 +635,23 @@ export async function updateQuotation(
             cantidadEnsayos: d.cantidadEnsayos,
             cantidadVisitas: d.cantidadVisitas,
             precioUnitario: d.precioUnitario,
+          })),
+        );
+      }
+    }
+
+    // Replace servicios generales when provided
+    if (input.serviciosGenerales !== undefined) {
+      await tx
+        .delete(cotizacionServicioGeneral)
+        .where(eq(cotizacionServicioGeneral.cotizacionId, id));
+      if (input.serviciosGenerales.length > 0) {
+        await tx.insert(cotizacionServicioGeneral).values(
+          input.serviciosGenerales.map((s) => ({
+            cotizacionId: id,
+            descripcion: s.descripcion,
+            cantidad: s.cantidad,
+            precioUnitario: s.precioUnitario,
           })),
         );
       }
@@ -683,6 +755,15 @@ export async function submitWebQuotation(
       .returning({ id: cotizacion.id });
 
     const cotizacionId = newCotizacion.id;
+
+    // Generar código único usando la secuencia de PostgreSQL (10000-LIA, 10001-LIA, ...)
+    const [{ nextCode }] = await tx.execute<{ nextCode: string }>(
+      sql`SELECT nextval('cotizacion_codigo_seq')::text || '-LIA' AS "nextCode"`,
+    );
+    await tx
+      .update(cotizacion)
+      .set({ codigoCotizacion: nextCode, updatedAt: new Date() })
+      .where(eq(cotizacion.id, cotizacionId));
 
     if (input.ensayos.length > 0) {
       const detallesToInsert: (typeof cotizacionDetalle.$inferInsert)[] = [];

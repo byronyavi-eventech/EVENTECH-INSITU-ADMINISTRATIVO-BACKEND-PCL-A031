@@ -8,6 +8,20 @@
       "when": 1778773911463,
       "tag": "0000_crazy_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783641176948,
+      "tag": "0001_boring_sleeper",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1752418500000,
+      "tag": "0002_cotizacion_codigo_seq",
+      "breakpoints": true
     }
   ]
 }
