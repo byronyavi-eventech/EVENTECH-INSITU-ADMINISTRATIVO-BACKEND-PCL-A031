@@ -11,7 +11,7 @@ import {
   areaEnsayo,
   precioEnsayo,
 } from '../db/schema/index.js';
-import { eq, and, ilike, isNull, or, count, SQL, desc } from 'drizzle-orm';
+import { eq, and, ilike, isNull, or, count, sql, SQL, desc } from 'drizzle-orm';
 import { AppError } from '../utils/app-error.js';
 import { logger } from '../utils/logger.js';
 
@@ -757,9 +757,10 @@ export async function submitWebQuotation(
     const cotizacionId = newCotizacion.id;
 
     // Generar código único usando la secuencia de PostgreSQL (10000-LIA, 10001-LIA, ...)
-    const [{ nextCode }] = await tx.execute<{ nextCode: string }>(
+    const seqResult = await tx.execute<{ nextCode: string }>(
       sql`SELECT nextval('cotizacion_codigo_seq')::text || '-LIA' AS "nextCode"`,
     );
+    const nextCode = seqResult.rows[0].nextCode;
     await tx
       .update(cotizacion)
       .set({ codigoCotizacion: nextCode, updatedAt: new Date() })
