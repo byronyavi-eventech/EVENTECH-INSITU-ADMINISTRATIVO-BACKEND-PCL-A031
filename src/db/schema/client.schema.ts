@@ -43,9 +43,8 @@ export const cliente = pgTable(
     rutEmpresa: varchar('rut_empresa', { length: 12 }).unique(),
     giroEmpresa: varchar('giro_empresa', { length: 100 }).notNull(),
 
-    // Primary contact person for this client account
-    nombreContacto: varchar('nombre_contacto', { length: 100 }).notNull(),
-    apellidosContacto: varchar('apellidos_contacto', { length: 150 }).notNull(),
+    // Primary contact person for this client account (full name)
+    nombreContacto: varchar('nombre_contacto', { length: 255 }).notNull(),
     celularContacto: varchar('celular_contacto', { length: 20 }).notNull(),
     // Contact email — may differ from the Better Auth login email
     email: varchar('email', { length: 150 }).notNull(),

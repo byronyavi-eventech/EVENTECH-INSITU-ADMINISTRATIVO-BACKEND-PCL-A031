@@ -69,7 +69,7 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
           <!-- Saludo -->
           <tr>
             <td style="padding:28px 36px 0;">
-              <p style="margin:0;font-size:15px;color:#111827;">Estimado/a <strong>${cotizacion.cliente.nombreContacto} ${cotizacion.cliente.apellidosContacto}</strong>,</p>
+              <p style="margin:0;font-size:15px;color:#111827;">Estimado/a <strong>${cotizacion.cliente.nombreContacto}</strong>,</p>
               <p style="margin:10px 0 0;font-size:14px;color:#6b7280;line-height:1.6;">
                 Nos complace informarle que la cotización de servicios de ensayos para la obra
                 <strong style="color:#111827;">${cotizacion.obra.nombreObra}</strong> ha sido aprobada y firmada.
@@ -91,7 +91,7 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
                 </tr>
                 <tr style="background:#f9fafb;">
                   <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Contacto</td>
-                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.cliente.nombreContacto} ${cotizacion.cliente.apellidosContacto}</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.cliente.nombreContacto}</td>
                 </tr>
                 <tr>
                   <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Obra</td>

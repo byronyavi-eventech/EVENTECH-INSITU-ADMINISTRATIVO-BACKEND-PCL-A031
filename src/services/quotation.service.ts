@@ -27,7 +27,6 @@ export interface SubmitWebQuotationInput {
   rutEmpresa: string;
   giroEmpresa: string;
   nombreContacto: string;
-  apellidosContacto: string;
   celularContacto: string;
   emailContacto: string;
   direccionEmpresa: string;
@@ -76,7 +75,6 @@ export interface QuotationListItem {
     rutEmpresa: string | null;
     giroEmpresa: string;
     nombreContacto: string;
-    apellidosContacto: string;
     celularContacto: string;
     email: string;
     direccionEmpresa: string;
@@ -152,7 +150,6 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
       rutEmpresa: cliente.rutEmpresa,
       giroEmpresa: cliente.giroEmpresa,
       nombreContacto: cliente.nombreContacto,
-      apellidosContacto: cliente.apellidosContacto,
       celularContacto: cliente.celularContacto,
       email: cliente.email,
       direccionEmpresa: cliente.direccionEmpresa,
@@ -180,7 +177,6 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
             or(
               ilike(cliente.giroEmpresa, `%${q}%`),
               ilike(cliente.nombreContacto, `%${q}%`),
-              ilike(cliente.apellidosContacto, `%${q}%`),
               ilike(cotizacion.codigoCotizacion, `%${q}%`),
               ilike(obra.nombreObra, `%${q}%`),
             ),
@@ -203,7 +199,6 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
             or(
               ilike(cliente.giroEmpresa, `%${q}%`),
               ilike(cliente.nombreContacto, `%${q}%`),
-              ilike(cliente.apellidosContacto, `%${q}%`),
               ilike(cotizacion.codigoCotizacion, `%${q}%`),
               ilike(obra.nombreObra, `%${q}%`),
             ),
@@ -289,7 +284,6 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
         rutEmpresa: r.rutEmpresa,
         giroEmpresa: r.giroEmpresa,
         nombreContacto: r.nombreContacto,
-        apellidosContacto: r.apellidosContacto,
         celularContacto: r.celularContacto,
         email: r.email,
         direccionEmpresa: r.direccionEmpresa,
@@ -362,7 +356,6 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
       rutEmpresa: cliente.rutEmpresa,
       giroEmpresa: cliente.giroEmpresa,
       nombreContacto: cliente.nombreContacto,
-      apellidosContacto: cliente.apellidosContacto,
       celularContacto: cliente.celularContacto,
       email: cliente.email,
       direccionEmpresa: cliente.direccionEmpresa,
@@ -435,7 +428,6 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
       rutEmpresa: row.rutEmpresa,
       giroEmpresa: row.giroEmpresa,
       nombreContacto: row.nombreContacto,
-      apellidosContacto: row.apellidosContacto,
       celularContacto: row.celularContacto,
       email: row.email,
       direccionEmpresa: row.direccionEmpresa,
@@ -529,7 +521,6 @@ export interface UpdateQuotationInput {
   // Cliente fields (partial)
   giroEmpresa?: string;
   nombreContacto?: string;
-  apellidosContacto?: string;
   celularContacto?: string;
   emailContacto?: string;
   direccionEmpresa?: string;
@@ -590,8 +581,6 @@ export async function updateQuotation(
     const clientePatch: Partial<typeof cliente.$inferInsert> = {};
     if (input.giroEmpresa !== undefined) clientePatch.giroEmpresa = input.giroEmpresa;
     if (input.nombreContacto !== undefined) clientePatch.nombreContacto = input.nombreContacto;
-    if (input.apellidosContacto !== undefined)
-      clientePatch.apellidosContacto = input.apellidosContacto;
     if (input.celularContacto !== undefined) clientePatch.celularContacto = input.celularContacto;
     if (input.emailContacto !== undefined) clientePatch.email = input.emailContacto;
     if (input.direccionEmpresa !== undefined)
@@ -687,7 +676,6 @@ export async function submitWebQuotation(
         .set({
           giroEmpresa: input.giroEmpresa,
           nombreContacto: input.nombreContacto,
-          apellidosContacto: input.apellidosContacto,
           celularContacto: input.celularContacto,
           email: input.emailContacto,
           direccionEmpresa: input.direccionEmpresa,
@@ -705,7 +693,6 @@ export async function submitWebQuotation(
           rutEmpresa: input.rutEmpresa,
           giroEmpresa: input.giroEmpresa,
           nombreContacto: input.nombreContacto,
-          apellidosContacto: input.apellidosContacto,
           celularContacto: input.celularContacto,
           email: input.emailContacto,
           direccionEmpresa: input.direccionEmpresa,

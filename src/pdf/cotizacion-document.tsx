@@ -321,7 +321,7 @@ export function CotizacionDocument({ cotizacion }: CotizacionDocumentProps) {
             {/* Cliente */}
             <View style={styles.card}>
               <Field label="Empresa / Razón Social" value={cotizacion.cliente.giroEmpresa} bold />
-              <Field label="Contacto" value={`${cotizacion.cliente.nombreContacto} ${cotizacion.cliente.apellidosContacto}`} />
+              <Field label="Contacto" value={cotizacion.cliente.nombreContacto} />
               <Field label="Teléfono" value={cotizacion.cliente.celularContacto} />
               <Field label="Email" value={cotizacion.cliente.email} />
               <Field label="Dirección" value={`${cotizacion.cliente.direccionEmpresa}, ${cotizacion.cliente.comuna}`} />

@@ -46,8 +46,7 @@ const ensayoLineSchema = z.object({
 const submitWebQuotationSchema = z.object({
   rutEmpresa:        z.string().trim().min(1),
   giroEmpresa:       z.string().trim().min(2).max(255),
-  nombreContacto:    z.string().trim().min(2).max(100),
-  apellidosContacto: z.string().trim().min(2).max(150),
+  nombreContacto:    z.string().trim().min(2).max(255),
   celularContacto:   z.string().trim().regex(phoneRegex),
   emailContacto:     z.string().trim().email().max(150).transform((s) => s.toLowerCase()),
   direccionEmpresa:  z.string().trim().min(5).max(250),
@@ -127,8 +126,7 @@ const servicioGeneralUpdateSchema = z.object({
 
 const updateQuotationSchema = z.object({
   giroEmpresa:       z.string().trim().min(2).max(255).optional(),
-  nombreContacto:    z.string().trim().min(2).max(100).optional(),
-  apellidosContacto: z.string().trim().min(2).max(150).optional(),
+  nombreContacto:    z.string().trim().min(2).max(255).optional(),
   celularContacto:   z.string().trim().regex(phoneRegex).optional(),
   emailContacto:     z.string().trim().email().max(150).transform((s) => s.toLowerCase()).optional(),
   direccionEmpresa:  z.string().trim().min(5).max(250).optional(),
