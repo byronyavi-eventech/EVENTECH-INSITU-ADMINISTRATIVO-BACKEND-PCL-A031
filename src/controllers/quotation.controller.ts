@@ -10,9 +10,16 @@ import {
   getCotizacionById,
   EstadoCotizacion,
 } from '../services/quotation.service.js';
-import { sendCotizacionEmail } from '../services/email.service.js';
+import {
+  sendCotizacionEmail,
+  sendCotizacionClienteEmail,
+} from '../services/email.service.js';
+import { verifyQuotationToken } from '../services/token.service.js';
 import { CotizacionDocument } from '../pdf/cotizacion-document.js';
 import { AppError } from '../utils/app-error.js';
+import { db } from '../db/index.js';
+import { cotizacion } from '../db/schema/index.js';
+import { eq } from 'drizzle-orm';
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>;
 
@@ -91,7 +98,15 @@ export const listQuotationsHandler: AsyncHandler = wrap(async (req, res) => {
 // ─── PATCH /quotations/:id/estado ─────────────────────────────────────────────
 
 const VALID_ESTADOS: EstadoCotizacion[] = [
-  'BORRADOR', 'ENVIADA', 'ACEPTADA', 'RECHAZADA', 'VENCIDA', 'ANULADA',
+  'NUEVA',
+  'ENVIADA_FIRMA',
+  'FIRMADA',
+  'ENVIADA_CLIENTE',
+  'ACEPTADA_CLIENTE',
+  'RECHAZADA_CLIENTE',
+  'RECHAZADA',
+  'VENCIDA',
+  'ANULADA',
 ];
 
 const updateEstadoSchema = z.object({
@@ -158,9 +173,9 @@ export const getPdfHandler: AsyncHandler = wrap(async (req, res) => {
 
   const cotizacion = await getCotizacionById(id);
 
-  if (cotizacion.estado !== 'ACEPTADA') {
+  if (cotizacion.estado !== 'FIRMADA') {
     throw new AppError(
-      'Solo se puede generar PDF de cotizaciones en estado ACEPTADA.',
+      'Solo se puede generar PDF de cotizaciones en estado FIRMADA.',
       422,
     );
   }
@@ -190,9 +205,9 @@ export const sendEmailHandler: AsyncHandler = wrap(async (req, res) => {
 
   const cotizacion = await getCotizacionById(id);
 
-  if (cotizacion.estado !== 'ACEPTADA') {
+  if (cotizacion.estado !== 'FIRMADA') {
     throw new AppError(
-      'Solo se puede enviar email de cotizaciones en estado ACEPTADA.',
+      'Solo se puede enviar email de cotizaciones en estado FIRMADA.',
       422,
     );
   }
@@ -203,4 +218,114 @@ export const sendEmailHandler: AsyncHandler = wrap(async (req, res) => {
     status: 'success',
     message: `Email enviado a ${cotizacion.cliente.email}`,
   });
+});
+
+// ─── POST /quotations/:id/send-cliente-email ───────────────────────────────────────
+
+export const sendClienteEmailHandler: AsyncHandler = wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) throw new AppError('ID invalido.', 400);
+
+  const cot = await getCotizacionById(id);
+
+  if (cot.estado !== 'FIRMADA') {
+    throw new AppError(
+      'Solo se puede enviar email al cliente de cotizaciones en estado FIRMADA.',
+      422,
+    );
+  }
+
+  // Send email with Accept/Reject buttons
+  await sendCotizacionClienteEmail(cot);
+
+  // Transition to ENVIADA_CLIENTE and record timestamp
+  await db
+    .update(cotizacion)
+    .set({
+      estado: 'ENVIADA_CLIENTE',
+      tokenEnviadoAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(cotizacion.id, id));
+
+  res.json({
+    status: 'success',
+    message: `Email enviado al cliente ${cot.cliente.email}. Estado actualizado a ENVIADA_CLIENTE.`,
+  });
+});
+
+// ─── GET /quotations/respond (PUBLIC — cliente hace click en el email) ─────────
+
+export const respondQuotationHandler: AsyncHandler = wrap(async (req, res) => {
+  const token = String(req.query.token ?? '');
+  if (!token) throw new AppError('Token requerido.', 400);
+
+  const frontendUrl =
+    process.env.FRONTEND_URL ?? 'http://localhost:5173';
+
+  let payload: Awaited<ReturnType<typeof verifyQuotationToken>>;
+  try {
+    payload = await verifyQuotationToken(token);
+  } catch (err) {
+    const msg = (err as Error).message;
+    return res.redirect(
+      302,
+      `${frontendUrl}/cotizacion/respuesta?estado=error&mensaje=${encodeURIComponent(msg)}`,
+    );
+  }
+
+  const { cotizacionId, accion } = payload;
+
+  // Fetch current state
+  const [existing] = await db
+    .select({ estado: cotizacion.estado })
+    .from(cotizacion)
+    .where(eq(cotizacion.id, cotizacionId))
+    .limit(1);
+
+  if (!existing) {
+    return res.redirect(
+      302,
+      `${frontendUrl}/cotizacion/respuesta?estado=error&mensaje=${encodeURIComponent('Cotizacion no encontrada.')}`,
+    );
+  }
+
+  // Idempotencia: si ya respondio, redirigir con el estado actual
+  if (
+    existing.estado === 'ACEPTADA_CLIENTE' ||
+    existing.estado === 'RECHAZADA_CLIENTE'
+  ) {
+    const estadoLabel = existing.estado === 'ACEPTADA_CLIENTE' ? 'aceptada' : 'rechazada';
+    return res.redirect(
+      302,
+      `${frontendUrl}/cotizacion/respuesta?estado=${estadoLabel}&cotizacionId=${cotizacionId}`,
+    );
+  }
+
+  // Solo se puede responder en estado ENVIADA_CLIENTE
+  if (existing.estado !== 'ENVIADA_CLIENTE') {
+    return res.redirect(
+      302,
+      `${frontendUrl}/cotizacion/respuesta?estado=error&mensaje=${encodeURIComponent('Esta cotizacion no esta disponible para respuesta.')}`,
+    );
+  }
+
+  const nuevoEstado: EstadoCotizacion =
+    accion === 'ACEPTAR' ? 'ACEPTADA_CLIENTE' : 'RECHAZADA_CLIENTE';
+
+  await db
+    .update(cotizacion)
+    .set({
+      estado: nuevoEstado,
+      respuestaClienteAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(cotizacion.id, cotizacionId));
+
+  const estadoLabel = nuevoEstado === 'ACEPTADA_CLIENTE' ? 'aceptada' : 'rechazada';
+
+  return res.redirect(
+    302,
+    `${frontendUrl}/cotizacion/respuesta?estado=${estadoLabel}&cotizacionId=${cotizacionId}`,
+  );
 });

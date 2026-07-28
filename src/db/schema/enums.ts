@@ -7,18 +7,29 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
 /**
- * Estado del ciclo de vida de una cotización.
- * BORRADOR    → en edición, no enviada al cliente
- * ENVIADA     → enviada al cliente, pendiente de respuesta
- * ACEPTADA    → cliente aceptó, genera OT
- * RECHAZADA   → cliente rechazó
- * VENCIDA     → plazo de validez expirado sin respuesta
- * ANULADA     → anulada manualmente por un admin
+ * Estado del ciclo de vida de una cotización (9 estados).
+ *
+ * NUEVA            → en edición, no enviada (antes BORRADOR)
+ * ENVIADA_FIRMA    → enviada al jefe de laboratorio para firma (antes ENVIADA)
+ * FIRMADA          → jefe de laboratorio aprobó y firmó (antes ACEPTADA)
+ * ENVIADA_CLIENTE  → PDF + botones ACEPTAR/RECHAZAR enviados al cliente por email
+ * ACEPTADA_CLIENTE → cliente aceptó la cotización via email
+ * RECHAZADA_CLIENTE→ cliente rechazó la cotización via email
+ * RECHAZADA        → rechazada internamente por el equipo
+ * VENCIDA          → plazo de validez expirado sin respuesta del cliente
+ * ANULADA          → anulada manualmente por un admin
+ *
+ * Flujo principal:
+ *   NUEVA → ENVIADA_FIRMA → FIRMADA → ENVIADA_CLIENTE → ACEPTADA_CLIENTE
+ *                                                     ↘ RECHAZADA_CLIENTE
  */
 export const estadoCotizacionEnum = pgEnum('estado_cotizacion', [
-  'BORRADOR',
-  'ENVIADA',
-  'ACEPTADA',
+  'NUEVA',
+  'ENVIADA_FIRMA',
+  'FIRMADA',
+  'ENVIADA_CLIENTE',
+  'ACEPTADA_CLIENTE',
+  'RECHAZADA_CLIENTE',
   'RECHAZADA',
   'VENCIDA',
   'ANULADA',

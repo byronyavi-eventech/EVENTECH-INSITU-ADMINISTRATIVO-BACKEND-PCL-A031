@@ -491,14 +491,19 @@ export async function updateEstadoCotizacion(
 
   if (!existing || existing.deletedAt) throw new AppError(`Cotización ${id} no encontrada.`, 404);
 
-  // Basic state-machine guardrails
+  // State-machine guardrails
+  // Flujo: NUEVA → ENVIADA_FIRMA → FIRMADA → ENVIADA_CLIENTE → ACEPTADA_CLIENTE
+  //                                                           ↘ RECHAZADA_CLIENTE
   const allowed: Record<string, EstadoCotizacion[]> = {
-    BORRADOR: ['ENVIADA', 'RECHAZADA', 'ANULADA'],
-    ENVIADA: ['ACEPTADA', 'RECHAZADA', 'ANULADA'],
-    ACEPTADA: ['ANULADA'],
-    RECHAZADA: ['BORRADOR'],
-    VENCIDA: ['ANULADA'],
-    ANULADA: [],
+    NUEVA:             ['ENVIADA_FIRMA', 'RECHAZADA', 'ANULADA'],
+    ENVIADA_FIRMA:     ['FIRMADA', 'RECHAZADA', 'ANULADA'],
+    FIRMADA:           ['ENVIADA_CLIENTE', 'RECHAZADA', 'ANULADA'],
+    ENVIADA_CLIENTE:   ['ACEPTADA_CLIENTE', 'RECHAZADA_CLIENTE', 'VENCIDA', 'ANULADA'],
+    ACEPTADA_CLIENTE:  ['ANULADA'],
+    RECHAZADA_CLIENTE: ['NUEVA', 'ANULADA'],
+    RECHAZADA:         ['NUEVA'],
+    VENCIDA:           ['ANULADA'],
+    ANULADA:           [],
   };
 
   if (!allowed[existing.estado]?.includes(nuevoEstado)) {
@@ -561,10 +566,10 @@ export async function updateQuotation(
       .where(and(eq(cotizacion.id, id), isNull(cotizacion.deletedAt)))
       .limit(1);
 
-    if (!cot) throw new AppError(`Cotización ${id} no encontrada.`, 404);
-    if (!['BORRADOR', 'RECHAZADA', 'ENVIADA'].includes(cot.estado)) {
+    if (!cot) throw new AppError(`Cotizacion ${id} no encontrada.`, 404);
+    if (!['NUEVA', 'RECHAZADA', 'ENVIADA_FIRMA'].includes(cot.estado)) {
       throw new AppError(
-        'Solo se pueden editar cotizaciones en estado BORRADOR, RECHAZADA o ENVIADA.',
+        'Solo se pueden editar cotizaciones en estado NUEVA, RECHAZADA o ENVIADA_FIRMA.',
         422,
       );
     }
@@ -736,7 +741,7 @@ export async function submitWebQuotation(
       .values({
         obraId: obraId,
         origen: 'WEB',
-        estado: 'BORRADOR',
+        estado: 'NUEVA',
         observaciones: null,
       })
       .returning({ id: cotizacion.id });
