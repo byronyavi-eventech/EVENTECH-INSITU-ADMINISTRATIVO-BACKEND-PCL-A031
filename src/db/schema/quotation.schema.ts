@@ -50,7 +50,7 @@ export const cotizacion = pgTable(
 
     codigoCotizacion: varchar('codigo_cotizacion', { length: 30 }).unique(),
     origen: origenCotizacionEnum('origen').notNull(),
-    estado: estadoCotizacionEnum('estado').notNull().default('BORRADOR'),
+    estado: estadoCotizacionEnum('estado').notNull().default('NUEVA'),
     observaciones: text('observaciones'),
 
     // Internal user who created/entered the quote. NULL for web self-service.
@@ -62,6 +62,12 @@ export const cotizacion = pgTable(
     fechaSolicitud: timestamp('fecha_solicitud', { withTimezone: true })
       .notNull()
       .defaultNow(),
+
+    // Timestamp when the last client-response token was issued (ENVIADA_CLIENTE).
+    tokenEnviadoAt: timestamp('token_enviado_at', { withTimezone: true }),
+
+    // Timestamp when the client responded (ACEPTADA_CLIENTE / RECHAZADA_CLIENTE).
+    respuestaClienteAt: timestamp('respuesta_cliente_at', { withTimezone: true }),
 
     // Soft delete — financial documents are never hard-deleted.
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
