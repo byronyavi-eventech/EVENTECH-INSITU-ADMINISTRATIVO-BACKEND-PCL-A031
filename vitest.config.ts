@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     // Use Node environment (not browser/jsdom — this is a backend project).
     environment: 'node',
+    include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
     // Show individual test names even when they pass.
     reporter: 'verbose',
     // Global test helpers (describe, it, expect, vi) — no need to import per-file.
