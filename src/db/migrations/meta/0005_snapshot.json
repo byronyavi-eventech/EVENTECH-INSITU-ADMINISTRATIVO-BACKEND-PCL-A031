@@ -1,6 +1,6 @@
 {
-  "id": "d856164a-871e-4bd8-a8b6-4dd98b690922",
-  "prevId": "b2e38288-aa5a-4fdc-9821-aa25a1b01a1b",
+  "id": "3e2f7912-d488-4166-86af-9a2e3bdd0445",
+  "prevId": "d856164a-871e-4bd8-a8b6-4dd98b690922",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1526,7 +1526,7 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'BORRADOR'"
+          "default": "'NUEVA'"
         },
         "observaciones": {
           "name": "observaciones",
@@ -1546,6 +1546,18 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "token_enviado_at": {
+          "name": "token_enviado_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "respuesta_cliente_at": {
+          "name": "respuesta_cliente_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "deleted_at": {
           "name": "deleted_at",
@@ -1912,9 +1924,12 @@
       "name": "estado_cotizacion",
       "schema": "public",
       "values": [
-        "BORRADOR",
-        "ENVIADA",
-        "ACEPTADA",
+        "NUEVA",
+        "ENVIADA_FIRMA",
+        "FIRMADA",
+        "ENVIADA_CLIENTE",
+        "ACEPTADA_CLIENTE",
+        "RECHAZADA_CLIENTE",
         "RECHAZADA",
         "VENCIDA",
         "ANULADA"

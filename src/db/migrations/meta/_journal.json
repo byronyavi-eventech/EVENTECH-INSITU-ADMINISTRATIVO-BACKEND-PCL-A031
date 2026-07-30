@@ -19,22 +19,29 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1752418500000,
-      "tag": "0002_cotizacion_codigo_seq",
+      "when": 1752678900000,
+      "tag": "0002_quotation_estado_redesign",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "7",
-      "when": 1785181692658,
-      "tag": "0003_merge_contact_name",
+      "when": 1752679200000,
+      "tag": "0003_cotizacion_codigo_seq",
       "breakpoints": true
     },
     {
       "idx": 4,
       "version": "7",
+      "when": 1785181692658,
+      "tag": "0004_merge_contact_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
       "when": 1785354265468,
-      "tag": "0004_icy_pestilence",
+      "tag": "0005_icy_pestilence",
       "breakpoints": true
     }
   ]
