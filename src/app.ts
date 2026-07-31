@@ -8,9 +8,12 @@ import { auth } from './auth.js';
 export const app = express();
 
 // Middlewares
-const allowedOrigins = ['http://localhost:5173', process.env.FRONTEND_URL].filter(
-  Boolean,
-) as string[];
+// change url to env vars
+const allowedOrigins = [
+  'http://localhost:5173',
+  process.env.FRONTEND_URL,
+  process.env.LANDING_PAGE_URL,
+].filter(Boolean) as string[];
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 
