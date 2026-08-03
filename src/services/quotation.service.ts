@@ -791,18 +791,25 @@ export async function submitWebQuotation(
           continue;
         }
 
-        const [matchedTipo] = await tx
-          .select({ id: tipoEnsayo.id })
+        // Fetch all tipos for the subarea and match in memory to completely avoid
+        // PostgreSQL collation limitations, trailing spaces, and NFC/NFD mismatches.
+        const allTipos = await tx
+          .select({ id: tipoEnsayo.id, nombreTipoEnsayo: tipoEnsayo.nombreTipoEnsayo })
           .from(tipoEnsayo)
-          .where(
-            and(
-              eq(tipoEnsayo.subareaId, matchedSubarea.id),
-              ilike(tipoEnsayo.nombreTipoEnsayo, ensayoNorm),
-            ),
-          )
-          .limit(1);
+          .where(eq(tipoEnsayo.subareaId, matchedSubarea.id));
+
+        const normalizeStr = (str: string) => str.trim().normalize('NFC').toLowerCase();
+        const targetEnsayo = normalizeStr(line.ensayo);
+
+        const matchedTipo = allTipos.find(
+          (t) => normalizeStr(t.nombreTipoEnsayo) === targetEnsayo
+        );
+
         if (!matchedTipo) {
-          logger.warn({ areaNorm, subareaNorm, ensayoNorm }, 'quotation.service: tipo_ensayo not found — ensayo skipped');
+          logger.warn(
+            { areaNorm, subareaNorm, ensayoNorm, availableTipos: allTipos.map(t => t.nombreTipoEnsayo) },
+            'quotation.service: tipo_ensayo not found — ensayo skipped'
+          );
           continue;
         }
 

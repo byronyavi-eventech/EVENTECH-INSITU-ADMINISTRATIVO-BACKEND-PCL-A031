@@ -54,7 +54,7 @@ ins AS (
   INSERT INTO tipo_ensayo (subarea_id, nombre_tipo_ensayo, codigo_norma)
   SELECT sub.id, e.nombre, e.norma
   FROM sub, (VALUES
-    ('Análisis granilométrico',              'Método 8.102.1, diciembre 2003, Manual de carreteras Vol.8'),
+    ('Análisis granulométrico',              'Método 8.102.1, diciembre 2003, Manual de carreteras Vol.8'),
     ('Humedad',                              'NCh1515.Of79'),
     ('Límite líquido',                       'NCh1517/1.Of79'),
     ('Límite plástico',                      'NCh1517/2.Of79'),
@@ -69,7 +69,7 @@ INSERT INTO precio_ensayo (tipo_ensayo_id, precio, fecha_inicio, fecha_fin, acti
 SELECT ins.id, p.precio, CURRENT_DATE, NULL, TRUE
 FROM ins
 JOIN (VALUES
-  ('Análisis granilométrico',              1.00::numeric),
+  ('Análisis granulométrico',              1.00::numeric),
   ('Humedad',                              0.00::numeric),
   ('Límite líquido',                       1.50::numeric),
   ('Límite plástico',                      1.50::numeric),
