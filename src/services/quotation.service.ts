@@ -771,7 +771,10 @@ export async function submitWebQuotation(
           .from(areaEnsayo)
           .where(ilike(areaEnsayo.nombreArea, areaNorm))
           .limit(1);
-        if (!matchedArea) continue;
+        if (!matchedArea) {
+          logger.warn({ areaNorm }, 'quotation.service: area not found — ensayo skipped');
+          continue;
+        }
 
         const [matchedSubarea] = await tx
           .select({ id: subareaEnsayo.id })
@@ -783,7 +786,10 @@ export async function submitWebQuotation(
             ),
           )
           .limit(1);
-        if (!matchedSubarea) continue;
+        if (!matchedSubarea) {
+          logger.warn({ areaNorm, subareaNorm }, 'quotation.service: subarea not found — ensayo skipped');
+          continue;
+        }
 
         const [matchedTipo] = await tx
           .select({ id: tipoEnsayo.id })
@@ -795,7 +801,10 @@ export async function submitWebQuotation(
             ),
           )
           .limit(1);
-        if (!matchedTipo) continue;
+        if (!matchedTipo) {
+          logger.warn({ areaNorm, subareaNorm, ensayoNorm }, 'quotation.service: tipo_ensayo not found — ensayo skipped');
+          continue;
+        }
 
         const [activePrecio] = await tx
           .select({ precio: precioEnsayo.precio })
@@ -817,6 +826,11 @@ export async function submitWebQuotation(
           precioUnitario: activePrecio?.precio ?? '0',
         });
       }
+
+      logger.info(
+        { cotizacionId, requested: input.ensayos.length, matched: detallesToInsert.length },
+        'quotation.service: ensayo matching summary',
+      );
 
       if (detallesToInsert.length > 0) {
         await tx.insert(cotizacionDetalle).values(detallesToInsert);
