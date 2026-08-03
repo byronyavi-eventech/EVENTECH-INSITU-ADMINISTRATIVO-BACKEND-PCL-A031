@@ -32,6 +32,9 @@ RUN pnpm install --frozen-lockfile --prod
 # Copy compiled output from builder
 COPY --from=builder /app/dist ./dist
 
+# Copy PDF assets (images) — these are not compiled by tsc, must be copied explicitly
+COPY src/pdf/*.png ./dist/pdf/
+
 # Copy migrations so db:migrate can run at startup
 COPY src/db/migrations ./src/db/migrations
 

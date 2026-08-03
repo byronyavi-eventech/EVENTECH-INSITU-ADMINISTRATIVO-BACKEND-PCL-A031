@@ -254,7 +254,15 @@ function Field({ label, value, bold = false }: { label: string; value: string | 
   );
 }
 
-const getImagePath = (name: string) => path.join(process.cwd(), 'src', 'pdf', name);
+// In production the compiled JS lives at dist/pdf/cotizacion-document.js.
+// The PNG assets are copied there by the Dockerfile (COPY src/pdf/*.png dist/pdf/).
+// In development they sit next to the source file in src/pdf/.
+const PDF_ASSETS_DIR =
+  process.env.NODE_ENV === 'production'
+    ? path.join(process.cwd(), 'dist', 'pdf')
+    : path.join(process.cwd(), 'src', 'pdf');
+
+const getImagePath = (name: string) => path.join(PDF_ASSETS_DIR, name);
 
 interface CotizacionDocumentProps {
   cotizacion: QuotationListItem;
