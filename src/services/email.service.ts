@@ -443,6 +443,7 @@ function buildClientEmailHtml(
  */
 export async function sendCotizacionClienteEmail(
   cotizacion: QuotationListItem,
+  ttlDays?: number,
 ): Promise<void> {
   logger.info(
     { cotizacionId: cotizacion.id, to: cotizacion.cliente.email },
@@ -455,8 +456,8 @@ export async function sendCotizacionClienteEmail(
     'http://localhost:3000';
 
   const [acceptToken, rejectToken] = await Promise.all([
-    generateQuotationToken(cotizacion.id, 'ACEPTAR'),
-    generateQuotationToken(cotizacion.id, 'RECHAZAR'),
+    generateQuotationToken(cotizacion.id, 'ACEPTAR', ttlDays),
+    generateQuotationToken(cotizacion.id, 'RECHAZAR', ttlDays),
   ]);
 
   const acceptUrl = `${backendUrl}/api/quotations/respond?token=${encodeURIComponent(acceptToken)}`;

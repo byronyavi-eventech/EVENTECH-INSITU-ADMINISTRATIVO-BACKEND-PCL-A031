@@ -152,6 +152,7 @@ const updateQuotationSchema = z.object({
   correoEncargado:   z.string().trim().email().max(150).optional(),
   telefonoEncargado: z.string().trim().regex(phoneRegex).optional(),
   observaciones:     z.string().trim().optional(),
+  diasVigenciaToken: z.coerce.number().int().min(1).max(365).optional(),
   detalles:          z.array(detalleUpdateSchema).min(1).optional(),
   serviciosGenerales: z.array(servicioGeneralUpdateSchema).optional(),
 });
@@ -235,8 +236,8 @@ export const sendClienteEmailHandler: AsyncHandler = wrap(async (req, res) => {
     );
   }
 
-  // Send email with Accept/Reject buttons
-  await sendCotizacionClienteEmail(cot);
+  // Send email with Accept/Reject buttons using the per-quotation TTL
+  await sendCotizacionClienteEmail(cot, cot.diasVigenciaToken);
 
   // Transition to ENVIADA_CLIENTE and record timestamp
   await db
