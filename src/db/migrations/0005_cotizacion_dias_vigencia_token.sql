@@ -1,0 +1,1 @@
+ALTER TABLE "cotizacion" ADD COLUMN "dias_vigencia_token" integer DEFAULT 15 NOT NULL;

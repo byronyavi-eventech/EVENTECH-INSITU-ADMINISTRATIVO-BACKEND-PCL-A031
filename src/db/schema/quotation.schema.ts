@@ -53,6 +53,9 @@ export const cotizacion = pgTable(
     estado: estadoCotizacionEnum('estado').notNull().default('NUEVA'),
     observaciones: text('observaciones'),
 
+    // Days the client has to respond after receiving the token email (default 15).
+    diasVigenciaToken: integer('dias_vigencia_token').notNull().default(15),
+
     // Internal user who created/entered the quote. NULL for web self-service.
     creadoPor: text('creado_por').references(() => user.id, {
       onDelete: 'set null',

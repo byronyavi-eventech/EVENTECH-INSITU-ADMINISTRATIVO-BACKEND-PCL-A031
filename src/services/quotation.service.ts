@@ -70,6 +70,7 @@ export interface QuotationListItem {
   fechaSolicitud: string;
   createdAt: string;
   observaciones: string | null;
+  diasVigenciaToken: number;
   cliente: {
     id: number;
     rutEmpresa: string | null;
@@ -145,6 +146,7 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
       fechaSolicitud: cotizacion.fechaSolicitud,
       createdAt: cotizacion.createdAt,
       observaciones: cotizacion.observaciones,
+      diasVigenciaToken: cotizacion.diasVigenciaToken,
       // cliente fields
       clienteId: cliente.id,
       rutEmpresa: cliente.rutEmpresa,
@@ -279,6 +281,7 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
       fechaSolicitud: r.fechaSolicitud.toISOString(),
       createdAt: r.createdAt.toISOString(),
       observaciones: r.observaciones,
+      diasVigenciaToken: r.diasVigenciaToken,
       cliente: {
         id: r.clienteId,
         rutEmpresa: r.rutEmpresa,
@@ -352,6 +355,7 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
       fechaSolicitud: cotizacion.fechaSolicitud,
       createdAt: cotizacion.createdAt,
       observaciones: cotizacion.observaciones,
+      diasVigenciaToken: cotizacion.diasVigenciaToken,
       clienteId: cliente.id,
       rutEmpresa: cliente.rutEmpresa,
       giroEmpresa: cliente.giroEmpresa,
@@ -423,6 +427,7 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
     fechaSolicitud: row.fechaSolicitud.toISOString(),
     createdAt: row.createdAt.toISOString(),
     observaciones: row.observaciones,
+    diasVigenciaToken: row.diasVigenciaToken,
     cliente: {
       id: row.clienteId,
       rutEmpresa: row.rutEmpresa,
@@ -538,6 +543,8 @@ export interface UpdateQuotationInput {
   telefonoEncargado?: string;
   // Observaciones
   observaciones?: string;
+  // Vigencia del token de respuesta del cliente (días)
+  diasVigenciaToken?: number;
   // Detalles — replace all line items when provided
   detalles?: Array<{
     tipoEnsayoId: number;
@@ -574,11 +581,18 @@ export async function updateQuotation(
       );
     }
 
-    // Update observaciones on the cotización itself
-    if (input.observaciones !== undefined) {
+    // Update observaciones and diasVigenciaToken on the cotización itself
+    const hasCotPatch =
+      input.observaciones !== undefined ||
+      input.diasVigenciaToken !== undefined;
+    if (hasCotPatch) {
       await tx
         .update(cotizacion)
-        .set({ observaciones: input.observaciones, updatedAt: new Date() })
+        .set({
+          ...(input.observaciones !== undefined && { observaciones: input.observaciones }),
+          ...(input.diasVigenciaToken !== undefined && { diasVigenciaToken: input.diasVigenciaToken }),
+          updatedAt: new Date(),
+        })
         .where(eq(cotizacion.id, id));
     }
 

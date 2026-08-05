@@ -10,7 +10,7 @@
  */
 
 const SECRET = process.env.BETTER_AUTH_SECRET ?? '';
-const TOKEN_TTL_DAYS = Number(process.env.QUOTATION_TOKEN_TTL_DAYS ?? 7);
+const TOKEN_TTL_DAYS = Number(process.env.QUOTATION_TOKEN_TTL_DAYS ?? 15);
 
 export type QuotationTokenAccion = 'ACEPTAR' | 'RECHAZAR';
 
@@ -85,13 +85,15 @@ async function verifyData(data: string, sig: string): Promise<boolean> {
 export async function generateQuotationToken(
   cotizacionId: number,
   accion: QuotationTokenAccion,
+  ttlDays?: number,
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
+  const effectiveTtl = (ttlDays != null && ttlDays > 0) ? ttlDays : TOKEN_TTL_DAYS;
   const payload: QuotationTokenPayload = {
     cotizacionId,
     accion,
     iat: now,
-    exp: now + TOKEN_TTL_DAYS * 24 * 60 * 60,
+    exp: now + effectiveTtl * 24 * 60 * 60,
   };
 
   const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'QCT' }));
