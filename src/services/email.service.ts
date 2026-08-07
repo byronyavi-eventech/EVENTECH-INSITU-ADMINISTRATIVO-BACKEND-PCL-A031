@@ -598,7 +598,7 @@ export async function sendCotizacionClienteEmail(
   const { error } = await resend.emails.send({
     from: FROM,
     to: [cotizacion.cliente.email],
-    subject: `Cotizacion ${docCode} &mdash; Pendiente de su respuesta`,
+    subject: `Cotizacion ${docCode} Pendiente de su respuesta`,
     html: buildClientEmailHtml(cotizacion, acceptUrl, rejectUrl),
     attachments: [
       {
