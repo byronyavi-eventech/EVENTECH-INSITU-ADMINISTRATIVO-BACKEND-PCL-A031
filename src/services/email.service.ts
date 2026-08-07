@@ -523,7 +523,7 @@ function buildClientEmailHtml(
                 </tr>
               </table>
               <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;text-align:center;">
-                Los botones tienen una vigencia de 7 dias desde el envio de este correo.
+                Los botones tienen una vigencia de ${cotizacion.diasVigenciaToken} dias desde el envio de este correo.
               </p>
             </td>
           </tr>
