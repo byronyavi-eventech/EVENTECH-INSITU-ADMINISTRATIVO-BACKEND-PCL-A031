@@ -22,6 +22,7 @@ import {
   precioEnsayo,
 } from './catalog.schema.js';
 import { cotizacion, cotizacionDetalle, cotizacionServicioGeneral } from './quotation.schema.js';
+import { cuentaBancaria } from './cuenta_bancaria.schema.js';
 
 // ---------------------------------------------------------------------------
 // Better Auth tables
@@ -145,8 +146,23 @@ export const cotizacionRelations = relations(cotizacion, ({ one, many }) => ({
     fields: [cotizacion.creadoPor],
     references: [user.id],
   }),
+  cuentaPrincipal: one(cuentaBancaria, {
+    fields: [cotizacion.cuentaPrincipalId],
+    references: [cuentaBancaria.id],
+    relationName: 'cuentaPrincipal',
+  }),
+  cuentaSecundaria: one(cuentaBancaria, {
+    fields: [cotizacion.cuentaSecundariaId],
+    references: [cuentaBancaria.id],
+    relationName: 'cuentaSecundaria',
+  }),
   detalles: many(cotizacionDetalle),
   serviciosGenerales: many(cotizacionServicioGeneral),
+}));
+
+export const cuentaBancariaRelations = relations(cuentaBancaria, ({ many }) => ({
+  cotizacionesPrincipal: many(cotizacion, { relationName: 'cuentaPrincipal' }),
+  cotizacionesSecundaria: many(cotizacion, { relationName: 'cuentaSecundaria' }),
 }));
 
 export const cotizacionDetalleRelations = relations(

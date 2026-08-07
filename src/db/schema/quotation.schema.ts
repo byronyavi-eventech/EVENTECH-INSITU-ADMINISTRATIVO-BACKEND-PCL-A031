@@ -9,6 +9,7 @@
 import {
   pgTable,
   bigserial,
+  bigint,
   varchar,
   text,
   integer,
@@ -21,7 +22,8 @@ import { sql } from 'drizzle-orm';
 import { user } from './auth.schema.js';
 import { obra } from './client.schema.js';
 import { tipoEnsayo } from './catalog.schema.js';
-import { estadoCotizacionEnum, origenCotizacionEnum } from './enums.js';
+import { estadoCotizacionEnum, origenCotizacionEnum, condicionPagoEnum, tipoAjusteEnum } from './enums.js';
+import { cuentaBancaria } from './cuenta_bancaria.schema.js';
 
 /**
  * `tbl_cotizacion` → `cotizacion`
@@ -72,6 +74,25 @@ export const cotizacion = pgTable(
     // Timestamp when the client responded (ACEPTADA_CLIENTE / RECHAZADA_CLIENTE).
     respuestaClienteAt: timestamp('respuesta_cliente_at', { withTimezone: true }),
 
+    // ── Notas Comerciales ─────────────────────────────────────────────────
+    // Condición de pago acordada con el cliente.
+    condicionPago: condicionPagoEnum('condicion_pago').notNull().default('PAGO_100'),
+
+    // Cuenta bancaria principal seleccionada para recibir el pago.
+    cuentaPrincipalId: bigint('cuenta_principal_id', { mode: 'number' })
+      .references(() => cuentaBancaria.id, { onDelete: 'set null' }),
+
+    // Cuenta bancaria secundaria (backup).
+    cuentaSecundariaId: bigint('cuenta_secundaria_id', { mode: 'number' })
+      .references(() => cuentaBancaria.id, { onDelete: 'set null' }),
+
+    // Tipo de ajuste sobre el total: sin ajuste, descuento o incremento.
+    tipoAjuste: tipoAjusteEnum('tipo_ajuste').notNull().default('SIN_AJUSTE'),
+
+    // Porcentaje del ajuste (0.00 - 100.00). Null si tipoAjuste = SIN_AJUSTE.
+    porcentajeAjuste: numeric('porcentaje_ajuste', { precision: 5, scale: 2 }),
+    // ─────────────────────────────────────────────────────────────────────────
+
     // Soft delete — financial documents are never hard-deleted.
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
 
@@ -115,10 +136,10 @@ export const cotizacionDetalle = pgTable(
   'cotizacion_detalle',
   {
     id: bigserial('id', { mode: 'number' }).primaryKey(),
-    cotizacionId: bigserial('cotizacion_id', { mode: 'number' })
+    cotizacionId: bigint('cotizacion_id', { mode: 'number' })
       .notNull()
       .references(() => cotizacion.id, { onDelete: 'cascade' }),
-    tipoEnsayoId: bigserial('tipo_ensayo_id', { mode: 'number' })
+    tipoEnsayoId: bigint('tipo_ensayo_id', { mode: 'number' })
       .notNull()
       .references(() => tipoEnsayo.id, { onDelete: 'restrict' }),
 
@@ -161,7 +182,7 @@ export const cotizacionServicioGeneral = pgTable(
   'cotizacion_servicio_general',
   {
     id: bigserial('id', { mode: 'number' }).primaryKey(),
-    cotizacionId: bigserial('cotizacion_id', { mode: 'number' })
+    cotizacionId: bigint('cotizacion_id', { mode: 'number' })
       .notNull()
       .references(() => cotizacion.id, { onDelete: 'cascade' }),
 

@@ -25,6 +25,9 @@ export * from './client.schema.js';
 // Catalog domain
 export * from './catalog.schema.js';
 
+// Bank accounts (company-owned, configurable by admin)
+export * from './cuenta_bancaria.schema.js';
+
 // Quotation domain
 export * from './quotation.schema.js';
 

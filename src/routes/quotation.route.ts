@@ -8,6 +8,7 @@ import {
   sendEmailHandler,
   sendClienteEmailHandler,
   respondQuotationHandler,
+  getCuentasHandler,
 } from '../controllers/quotation.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 
@@ -20,6 +21,7 @@ quotationRouter.post('/web', submitWebQuotationHandler);
 quotationRouter.get('/respond', respondQuotationHandler);
 
 // Protected — admin panel
+quotationRouter.get('/cuentas', requireAuth, getCuentasHandler);
 quotationRouter.get('/', requireAuth, listQuotationsHandler);
 quotationRouter.patch('/:id/estado', requireAuth, updateEstadoHandler);
 quotationRouter.put('/:id', requireAuth, updateQuotationHandler);

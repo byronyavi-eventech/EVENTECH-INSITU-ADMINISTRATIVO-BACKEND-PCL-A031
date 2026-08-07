@@ -48,3 +48,21 @@ export const origenCotizacionEnum = pgEnum('origen_cotizacion', [
   'EMAIL',
   'TELEFONO',
 ]);
+
+/**
+ * Condición de pago acordada con el cliente.
+ */
+export const condicionPagoEnum = pgEnum('condicion_pago', [
+  'PAGO_100',
+  'PAGO_50',
+  'CREDITO_30_DIAS',
+]);
+
+/**
+ * Tipo de ajuste (descuento o incremento) sobre el total.
+ */
+export const tipoAjusteEnum = pgEnum('tipo_ajuste', [
+  'SIN_AJUSTE',
+  'DESCUENTO',
+  'INCREMENTO',
+]);
