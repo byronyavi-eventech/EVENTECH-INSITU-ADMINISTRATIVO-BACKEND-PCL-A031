@@ -265,9 +265,11 @@ const getImagePath = (name: string) => path.join(PDF_ASSETS_DIR, name);
 
 interface CotizacionDocumentProps {
   cotizacion: QuotationListItem;
+  firmaBase64?: string | null;
+  logoDataUri?: string;
 }
 
-export function CotizacionDocument({ cotizacion }: CotizacionDocumentProps) {
+export function CotizacionDocument({ cotizacion, firmaBase64, logoDataUri }: CotizacionDocumentProps) {
   const subtotal = cotizacion.detalles.reduce(
     (acc, d) => acc + parseFloat(d.precioUnitario) * d.cantidadEnsayos * d.cantidadVisitas,
     0,
@@ -304,7 +306,7 @@ export function CotizacionDocument({ cotizacion }: CotizacionDocumentProps) {
         {/* ── HEADER ── */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Image src={getImagePath('logo-insitu.png')} style={styles.logo} />
+            {logoDataUri && <Image src={logoDataUri} style={styles.logo} />}
           </View>
           <View style={styles.headerCenter}>
             <Text style={styles.docTitle}>COTIZACION DE ENSAYOS Y SERVICIOS</Text>
@@ -528,7 +530,7 @@ export function CotizacionDocument({ cotizacion }: CotizacionDocumentProps) {
           <Text style={styles.paragraph}>Esperando que la presente sea de su conveniencia, le saluda cordialmente,</Text>
           <View style={styles.footerSection}>
             <View style={{ flex: 1 }}>
-              <Image src={getImagePath('logo-insitu.png')} style={styles.logo} />
+              {logoDataUri && <Image src={logoDataUri} style={styles.logo} />}
               <Text style={{ fontSize: 7, color: MUTED, marginTop: 4 }}>...Es ver calidad</Text>
             </View>
             <View style={{ flex: 1 }}>
@@ -541,7 +543,12 @@ export function CotizacionDocument({ cotizacion }: CotizacionDocumentProps) {
               <Text style={[styles.footerContact, { color: PRIMARY }]}>www.laboratorioinsitu.cl</Text>
             </View>
             <View style={{ flex: 1, alignItems: 'center' }}>
-               <Image src={getImagePath('signature.png')} style={styles.signatureImage} />
+               {firmaBase64 && firmaBase64.trim() !== '' && (
+                 <Image
+                   src={`data:image/png;base64,${firmaBase64}`}
+                   style={styles.signatureImage}
+                 />
+               )}
             </View>
           </View>
         </View>
