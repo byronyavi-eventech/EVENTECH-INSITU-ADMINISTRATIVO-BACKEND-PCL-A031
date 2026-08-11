@@ -12,12 +12,24 @@ const FROM = process.env.EMAIL_SENDER ?? 'Insitu <no-reply@laboratorioinsitu.cl>
 // Mail HTML
 
 function buildEmailHtml(cotizacion: QuotationListItem): string {
-  const total = cotizacion.detalles
-    .reduce(
-      (acc, d) => acc + parseFloat(d.precioUnitario) * d.cantidadEnsayos * d.cantidadVisitas,
-      0,
-    )
-    .toFixed(2);
+  const subtotal = cotizacion.detalles.reduce(
+    (acc, d) => acc + parseFloat(d.precioUnitario) * d.cantidadEnsayos * d.cantidadVisitas,
+    0,
+  );
+
+  const porcentaje = cotizacion.porcentajeAjuste ? parseFloat(cotizacion.porcentajeAjuste) : 0;
+  let ajuste = 0;
+  if (cotizacion.tipoAjuste === 'DESCUENTO') ajuste = -(subtotal * porcentaje / 100);
+  else if (cotizacion.tipoAjuste === 'INCREMENTO') ajuste = subtotal * porcentaje / 100;
+  const totalFinal = (subtotal + ajuste).toFixed(2);
+  const subtotalStr = subtotal.toFixed(2);
+
+  const condicionPagoLabel: Record<string, string> = {
+    PAGO_100: 'Pago 100% anticipado',
+    PAGO_50: 'Pago 50% al inicio',
+    CREDITO_30_DIAS: 'Cr&eacute;dito a 30 d&iacute;as',
+  };
+  const condLabel = condicionPagoLabel[cotizacion.condicionPago] ?? cotizacion.condicionPago;
 
   const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
 
@@ -137,9 +149,59 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
                 <tr>
                   <td></td>
                   <td align="right" style="border-top:2px solid #c8102e;padding-top:12px;">
+                    ${cotizacion.tipoAjuste !== 'SIN_AJUSTE' ? `
+                    <p style="margin:0;font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;">Subtotal</p>
+                    <p style="margin:2px 0 8px;font-size:18px;font-weight:700;color:#374151;">UF ${subtotalStr}</p>
+                    <p style="margin:0;font-size:12px;color:${cotizacion.tipoAjuste === 'DESCUENTO' ? '#16a34a' : '#d97706'};font-weight:600;">
+                      ${cotizacion.tipoAjuste === 'DESCUENTO' ? 'DESCUENTO' : 'INCREMENTO'} ${porcentaje}%:
+                      ${cotizacion.tipoAjuste === 'DESCUENTO' ? '-' : '+'}UF ${Math.abs(ajuste).toFixed(2)}
+                    </p>
+                    <hr style="border:none;border-top:1px solid #e5e7eb;margin:8px 0;" />
+                    ` : ''}
                     <p style="margin:0;font-size:12px;color:#111827;font-weight:700;text-transform:uppercase;">Total Estimado</p>
-                    <p style="margin:4px 0 0;font-size:24px;font-weight:800;color:#c8102e;">UF ${total}</p>
+                    <p style="margin:4px 0 0;font-size:24px;font-weight:800;color:#c8102e;">UF ${totalFinal}</p>
                   </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Notas Comerciales -->
+          <tr>
+            <td style="padding:16px 36px 0;">
+              <div style="background:#fffbeb;padding:8px 12px;margin-bottom:12px;border-radius:4px;border-left:3px solid #f5a623;">
+                <p style="margin:0;font-size:11px;font-weight:700;color:#c8102e;text-transform:uppercase;letter-spacing:.5px;">Informaci&oacute;n de Pago</p>
+              </div>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;width:40%;">Condici&oacute;n de Pago</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${condLabel}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Forma de Pago</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">Transferencia Electr&oacute;nica</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Titular</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">LABORATORIO INSITU LTDA. &mdash; RUT 76.290.113-7</td>
+                </tr>
+                ${cotizacion.cuentaPrincipal ? `
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Cuenta Principal</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">
+                    <strong>${cotizacion.cuentaPrincipal.banco}</strong> &mdash; ${cotizacion.cuentaPrincipal.tipoCuenta} N&deg;${cotizacion.cuentaPrincipal.numeroCuenta}
+                  </td>
+                </tr>` : ''}
+                ${cotizacion.cuentaSecundaria ? `
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Cuenta Alternativa</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">
+                    <strong>${cotizacion.cuentaSecundaria.banco}</strong> &mdash; ${cotizacion.cuentaSecundaria.tipoCuenta} N&deg;${cotizacion.cuentaSecundaria.numeroCuenta}
+                  </td>
+                </tr>` : ''}
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Vigencia</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.diasVigenciaToken} d&iacute;as desde el env&iacute;o</td>
                 </tr>
               </table>
             </td>
@@ -224,19 +286,32 @@ function buildClientEmailHtml(
   acceptUrl: string,
   rejectUrl: string,
 ): string {
-  const total = cotizacion.detalles
-    .reduce(
-      (acc, d) => acc + parseFloat(d.precioUnitario) * d.cantidadEnsayos * d.cantidadVisitas,
-      0,
-    )
-    .toFixed(2);
+  const subtotal = cotizacion.detalles.reduce(
+    (acc, d) => acc + parseFloat(d.precioUnitario) * d.cantidadEnsayos * d.cantidadVisitas,
+    0,
+  );
 
-  // Add servicios generales to total
+  // Add servicios generales to subtotal
   const totalServicios = (cotizacion.serviciosGenerales ?? []).reduce(
     (acc, s) => acc + parseFloat(s.precioUnitario) * s.cantidad,
     0,
   );
-  const totalGeneral = (parseFloat(total) + totalServicios).toFixed(2);
+  const subtotalConServicios = subtotal + totalServicios;
+
+  // Compute adjustment
+  const porcentaje = cotizacion.porcentajeAjuste ? parseFloat(cotizacion.porcentajeAjuste) : 0;
+  let ajuste = 0;
+  if (cotizacion.tipoAjuste === 'DESCUENTO') ajuste = -(subtotalConServicios * porcentaje / 100);
+  else if (cotizacion.tipoAjuste === 'INCREMENTO') ajuste = subtotalConServicios * porcentaje / 100;
+  const totalGeneral = (subtotalConServicios + ajuste).toFixed(2);
+  const subtotalStr = subtotalConServicios.toFixed(2);
+
+  const condicionPagoLabel: Record<string, string> = {
+    PAGO_100: 'Pago 100% anticipado',
+    PAGO_50: 'Pago 50% al inicio',
+    CREDITO_30_DIAS: 'Cr&eacute;dito a 30 d&iacute;as',
+  };
+  const condLabel = condicionPagoLabel[cotizacion.condicionPago] ?? cotizacion.condicionPago;
 
   const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
 
@@ -270,7 +345,7 @@ function buildClientEmailHtml(
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cotizacion ${docCode} &mdash; Laboratorio Insitu</title>
+  <title>Cotizacion ${docCode} Laboratorio Insitu</title>
 </head>
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:system-ui,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0;">
@@ -368,10 +443,60 @@ function buildClientEmailHtml(
                 <tr>
                   <td></td>
                   <td align="right" style="border-top:2px solid #c8102e;padding-top:12px;">
+                    ${cotizacion.tipoAjuste !== 'SIN_AJUSTE' ? `
+                    <p style="margin:0;font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;">Subtotal</p>
+                    <p style="margin:2px 0 8px;font-size:18px;font-weight:700;color:#374151;">UF ${subtotalStr}</p>
+                    <p style="margin:0;font-size:12px;color:${cotizacion.tipoAjuste === 'DESCUENTO' ? '#16a34a' : '#d97706'};font-weight:600;">
+                      ${cotizacion.tipoAjuste === 'DESCUENTO' ? 'DESCUENTO' : 'INCREMENTO'} ${porcentaje}%:
+                      ${cotizacion.tipoAjuste === 'DESCUENTO' ? '-' : '+'}UF ${Math.abs(ajuste).toFixed(2)}
+                    </p>
+                    <hr style="border:none;border-top:1px solid #e5e7eb;margin:8px 0;" />
+                    ` : ''}
                     <p style="margin:0;font-size:12px;color:#111827;font-weight:700;text-transform:uppercase;">Total Estimado</p>
                     <p style="margin:4px 0 0;font-size:24px;font-weight:800;color:#c8102e;">UF ${totalGeneral}</p>
                     <p style="margin:4px 0 0;font-size:11px;color:#9ca3af;">Valores expresados en Unidades de Fomento (UF)</p>
                   </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Notas Comerciales / Información de Pago -->
+          <tr>
+            <td style="padding:16px 36px 0;">
+              <div style="background:#fffbeb;padding:8px 12px;margin-bottom:12px;border-radius:4px;border-left:3px solid #f5a623;">
+                <p style="margin:0;font-size:11px;font-weight:700;color:#c8102e;text-transform:uppercase;letter-spacing:.5px;">Informaci&oacute;n de Pago</p>
+              </div>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;width:40%;">Condici&oacute;n de Pago</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${condLabel}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Forma de Pago</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">Transferencia Electr&oacute;nica</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Titular</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">LABORATORIO INSITU LTDA. &mdash; RUT 76.290.113-7</td>
+                </tr>
+                ${cotizacion.cuentaPrincipal ? `
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Cuenta Principal</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">
+                    <strong>${cotizacion.cuentaPrincipal.banco}</strong> &mdash; ${cotizacion.cuentaPrincipal.tipoCuenta} N&deg;${cotizacion.cuentaPrincipal.numeroCuenta}
+                  </td>
+                </tr>` : ''}
+                ${cotizacion.cuentaSecundaria ? `
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Cuenta Alternativa</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">
+                    <strong>${cotizacion.cuentaSecundaria.banco}</strong> &mdash; ${cotizacion.cuentaSecundaria.tipoCuenta} N&deg;${cotizacion.cuentaSecundaria.numeroCuenta}
+                  </td>
+                </tr>` : ''}
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Vigencia</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.diasVigenciaToken} d&iacute;as desde el env&iacute;o</td>
                 </tr>
               </table>
             </td>
@@ -398,7 +523,7 @@ function buildClientEmailHtml(
                 </tr>
               </table>
               <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;text-align:center;">
-                Los botones tienen una vigencia de 7 dias desde el envio de este correo.
+                Los botones tienen una vigencia de ${cotizacion.diasVigenciaToken} dias desde el envio de este correo.
               </p>
             </td>
           </tr>
@@ -473,7 +598,7 @@ export async function sendCotizacionClienteEmail(
   const { error } = await resend.emails.send({
     from: FROM,
     to: [cotizacion.cliente.email],
-    subject: `Cotizacion ${docCode} &mdash; Pendiente de su respuesta`,
+    subject: `Cotizacion ${docCode} Pendiente de su respuesta`,
     html: buildClientEmailHtml(cotizacion, acceptUrl, rejectUrl),
     attachments: [
       {

@@ -9,7 +9,6 @@ import {
   CONFIDENCIALIDAD,
   COMPROMISOS,
   ACREDITACIONES,
-  NOTAS_COMERCIALES,
   TEXTO_ACEPTACION,
 } from './cotizacion-constants.js';
 
@@ -269,10 +268,28 @@ interface CotizacionDocumentProps {
 }
 
 export function CotizacionDocument({ cotizacion }: CotizacionDocumentProps) {
-  const total = cotizacion.detalles.reduce(
+  const subtotal = cotizacion.detalles.reduce(
     (acc, d) => acc + parseFloat(d.precioUnitario) * d.cantidadEnsayos * d.cantidadVisitas,
     0,
   );
+
+  // Compute adjusted total
+  const porcentaje = cotizacion.porcentajeAjuste ? parseFloat(cotizacion.porcentajeAjuste) : 0;
+  let ajuste = 0;
+  if (cotizacion.tipoAjuste === 'DESCUENTO') {
+    ajuste = -(subtotal * porcentaje / 100);
+  } else if (cotizacion.tipoAjuste === 'INCREMENTO') {
+    ajuste = subtotal * porcentaje / 100;
+  }
+  const total = subtotal + ajuste;
+
+  // Condicion de pago label
+  const condicionPagoLabel: Record<string, string> = {
+    PAGO_100:       'Pago 100% anticipado',
+    PAGO_50:        'Pago 50% al inicio',
+    CREDITO_30_DIAS: 'Crédito a 30 días',
+  };
+  const condLabel = condicionPagoLabel[cotizacion.condicionPago] ?? cotizacion.condicionPago;
 
   const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
 
@@ -376,6 +393,24 @@ export function CotizacionDocument({ cotizacion }: CotizacionDocumentProps) {
             })}
           </View>
           <View style={styles.totalRow} wrap={false}>
+            {cotizacion.tipoAjuste !== 'SIN_AJUSTE' && (
+              <>
+                <Text style={styles.totalLabel}>SUBTOTAL</Text>
+                <Text style={[styles.totalValue, { fontSize: 11, color: MUTED }]}>UF {subtotal.toFixed(2)}</Text>
+              </>
+            )}
+          </View>
+          {cotizacion.tipoAjuste !== 'SIN_AJUSTE' && (
+            <View style={[styles.totalRow, { borderTopWidth: 0, paddingTop: 2, marginTop: 0 }]} wrap={false}>
+              <Text style={styles.totalLabel}>
+                {cotizacion.tipoAjuste === 'DESCUENTO' ? `DESCUENTO (${porcentaje}%)` : `INCREMENTO (${porcentaje}%)`}
+              </Text>
+              <Text style={[styles.totalValue, { fontSize: 11, color: cotizacion.tipoAjuste === 'DESCUENTO' ? '#16a34a' : '#c8102e' }]}>
+                {cotizacion.tipoAjuste === 'DESCUENTO' ? '-' : '+'}UF {Math.abs(ajuste).toFixed(2)}
+              </Text>
+            </View>
+          )}
+          <View style={styles.totalRow} wrap={false}>
             <Text style={styles.totalLabel}>TOTAL ESTIMADO</Text>
             <Text style={styles.totalValue}>UF {total.toFixed(2)}</Text>
           </View>
@@ -444,14 +479,34 @@ export function CotizacionDocument({ cotizacion }: CotizacionDocumentProps) {
           ))}
         </View>
 
-        {/* ── NOTAS COMERCIALES ── */}
+        {/* ── NOTAS COMERCIALES (dinámicas) ── */}
         <View style={styles.section} wrap={false}>
           <View style={styles.sectionTitleBox}>
              <Text style={styles.sectionTitle}>Notas Comerciales</Text>
           </View>
-          {NOTAS_COMERCIALES.map((txt, i) => (
-            <Text key={i} style={styles.listItem}>{txt}</Text>
-          ))}
+          {/* Condición de pago */}
+          <Text style={styles.listItem}>1.- Condición de Pago: {condLabel}.</Text>
+          <Text style={styles.listItem}>2.- La emisión de la (O.C.) o carta de servicio implica la aceptación de los términos comerciales y técnicos de esta cotización.</Text>
+          <Text style={styles.listItem}>3.- Para la conversión a pesos, se considerará el valor de la UF del día de la emisión del Estado de Pago. (solo si aplica)</Text>
+          <Text style={styles.listItem}>4.- Vigencia del Precio: {cotizacion.diasVigenciaToken} días desde el envío de la cotización.</Text>
+          {/* Forma de pago + cuentas */}
+          <Text style={[styles.listItem, { marginTop: 4 }]}>5.- Forma de Pago: Transferencia Electrónica a razón de:</Text>
+          {cotizacion.cuentaPrincipal && (
+            <Text style={[styles.listItem, { paddingLeft: 16 }]}>
+              • (Principal) {cotizacion.cuentaPrincipal.titular} — RUT {cotizacion.cuentaPrincipal.rut} — {cotizacion.cuentaPrincipal.banco} {cotizacion.cuentaPrincipal.tipoCuenta} N°{cotizacion.cuentaPrincipal.numeroCuenta}
+            </Text>
+          )}
+          {cotizacion.cuentaSecundaria && (
+            <Text style={[styles.listItem, { paddingLeft: 16 }]}>
+              • (Alternativa) {cotizacion.cuentaSecundaria.titular} — RUT {cotizacion.cuentaSecundaria.rut} — {cotizacion.cuentaSecundaria.banco} {cotizacion.cuentaSecundaria.tipoCuenta} N°{cotizacion.cuentaSecundaria.numeroCuenta}
+            </Text>
+          )}
+          {/* Ajuste */}
+          {cotizacion.tipoAjuste !== 'SIN_AJUSTE' && (
+            <Text style={[styles.listItem, { marginTop: 4 }]}>
+              6.- Ajuste aplicado al total: {cotizacion.tipoAjuste === 'DESCUENTO' ? `Descuento de ${porcentaje}%` : `Incremento de ${porcentaje}%`} (UF {Math.abs(ajuste).toFixed(2)}).
+            </Text>
+          )}
         </View>
 
         {/* ── ACEPTACIÓN DEL SERVICIO ── */}

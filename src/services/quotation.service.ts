@@ -6,6 +6,7 @@ import {
   cotizacion,
   cotizacionDetalle,
   cotizacionServicioGeneral,
+  cuentaBancaria,
   tipoEnsayo,
   subareaEnsayo,
   areaEnsayo,
@@ -71,6 +72,13 @@ export interface QuotationListItem {
   createdAt: string;
   observaciones: string | null;
   diasVigenciaToken: number;
+  // ── Notas Comerciales ─────────────────────────────────
+  condicionPago: string;
+  tipoAjuste: string;
+  porcentajeAjuste: string | null;
+  cuentaPrincipal: { id: number; banco: string; tipoCuenta: string; numeroCuenta: string; titular: string; rut: string } | null;
+  cuentaSecundaria: { id: number; banco: string; tipoCuenta: string; numeroCuenta: string; titular: string; rut: string } | null;
+  // ───────────────────────────────────────────────
   cliente: {
     id: number;
     rutEmpresa: string | null;
@@ -147,6 +155,11 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
       createdAt: cotizacion.createdAt,
       observaciones: cotizacion.observaciones,
       diasVigenciaToken: cotizacion.diasVigenciaToken,
+      condicionPago: cotizacion.condicionPago,
+      tipoAjuste: cotizacion.tipoAjuste,
+      porcentajeAjuste: cotizacion.porcentajeAjuste,
+      cuentaPrincipalId: cotizacion.cuentaPrincipalId,
+      cuentaSecundariaId: cotizacion.cuentaSecundariaId,
       // cliente fields
       clienteId: cliente.id,
       rutEmpresa: cliente.rutEmpresa,
@@ -214,6 +227,16 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
 
   const cotizacionIds = rows.map((r) => r.id);
 
+  // Fetch cuentas bancarias (principal + secundaria) for these cotizaciones
+  const allCuentaIds = [
+    ...rows.map((r) => r.cuentaPrincipalId).filter(Boolean),
+    ...rows.map((r) => r.cuentaSecundariaId).filter(Boolean),
+  ] as number[];
+  const cuentaRows = allCuentaIds.length
+    ? await db.select().from(cuentaBancaria).where(or(...allCuentaIds.map((cid) => eq(cuentaBancaria.id, cid))))
+    : [];
+  const cuentaById = new Map(cuentaRows.map((c) => [c.id, c]));
+
   // Fetch encargados for these obras
   const encargadoRows = await db
     .select()
@@ -273,6 +296,8 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
 
   const data: QuotationListItem[] = rows.map((r) => {
     const enc = encargadoByObraId.get(r.obraId);
+    const cp = r.cuentaPrincipalId ? cuentaById.get(r.cuentaPrincipalId) ?? null : null;
+    const cs = r.cuentaSecundariaId ? cuentaById.get(r.cuentaSecundariaId) ?? null : null;
     return {
       id: r.id,
       codigoCotizacion: r.codigoCotizacion,
@@ -282,6 +307,11 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
       createdAt: r.createdAt.toISOString(),
       observaciones: r.observaciones,
       diasVigenciaToken: r.diasVigenciaToken,
+      condicionPago: r.condicionPago,
+      tipoAjuste: r.tipoAjuste,
+      porcentajeAjuste: r.porcentajeAjuste,
+      cuentaPrincipal: cp ? { id: cp.id, banco: cp.banco, tipoCuenta: cp.tipoCuenta, numeroCuenta: cp.numeroCuenta, titular: cp.titular, rut: cp.rut } : null,
+      cuentaSecundaria: cs ? { id: cs.id, banco: cs.banco, tipoCuenta: cs.tipoCuenta, numeroCuenta: cs.numeroCuenta, titular: cs.titular, rut: cs.rut } : null,
       cliente: {
         id: r.clienteId,
         rutEmpresa: r.rutEmpresa,
@@ -356,6 +386,11 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
       createdAt: cotizacion.createdAt,
       observaciones: cotizacion.observaciones,
       diasVigenciaToken: cotizacion.diasVigenciaToken,
+      condicionPago: cotizacion.condicionPago,
+      tipoAjuste: cotizacion.tipoAjuste,
+      porcentajeAjuste: cotizacion.porcentajeAjuste,
+      cuentaPrincipalId: cotizacion.cuentaPrincipalId,
+      cuentaSecundariaId: cotizacion.cuentaSecundariaId,
       clienteId: cliente.id,
       rutEmpresa: cliente.rutEmpresa,
       giroEmpresa: cliente.giroEmpresa,
@@ -419,6 +454,18 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
     .from(cotizacionServicioGeneral)
     .where(eq(cotizacionServicioGeneral.cotizacionId, id));
 
+  // Fetch cuentas bancarias for this cotizacion
+  const cuentaIdList = [
+    row.cuentaPrincipalId,
+    row.cuentaSecundariaId,
+  ].filter(Boolean) as number[];
+  const cuentaRowsSingle = cuentaIdList.length
+    ? await db.select().from(cuentaBancaria).where(or(...cuentaIdList.map((cid) => eq(cuentaBancaria.id, cid))))
+    : [];
+  const cuentaByIdSingle = new Map(cuentaRowsSingle.map((c) => [c.id, c]));
+  const cpSingle = row.cuentaPrincipalId ? cuentaByIdSingle.get(row.cuentaPrincipalId) ?? null : null;
+  const csSingle = row.cuentaSecundariaId ? cuentaByIdSingle.get(row.cuentaSecundariaId) ?? null : null;
+
   return {
     id: row.id,
     codigoCotizacion: row.codigoCotizacion,
@@ -428,6 +475,11 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
     createdAt: row.createdAt.toISOString(),
     observaciones: row.observaciones,
     diasVigenciaToken: row.diasVigenciaToken,
+    condicionPago: row.condicionPago,
+    tipoAjuste: row.tipoAjuste,
+    porcentajeAjuste: row.porcentajeAjuste,
+    cuentaPrincipal: cpSingle ? { id: cpSingle.id, banco: cpSingle.banco, tipoCuenta: cpSingle.tipoCuenta, numeroCuenta: cpSingle.numeroCuenta, titular: cpSingle.titular, rut: cpSingle.rut } : null,
+    cuentaSecundaria: csSingle ? { id: csSingle.id, banco: csSingle.banco, tipoCuenta: csSingle.tipoCuenta, numeroCuenta: csSingle.numeroCuenta, titular: csSingle.titular, rut: csSingle.rut } : null,
     cliente: {
       id: row.clienteId,
       rutEmpresa: row.rutEmpresa,
@@ -545,6 +597,13 @@ export interface UpdateQuotationInput {
   observaciones?: string;
   // Vigencia del token de respuesta del cliente (días)
   diasVigenciaToken?: number;
+  // ── Notas Comerciales ─────────────────────────────────
+  condicionPago?: 'PAGO_100' | 'PAGO_50' | 'CREDITO_30_DIAS';
+  cuentaPrincipalId?: number | null;
+  cuentaSecundariaId?: number | null;
+  tipoAjuste?: 'SIN_AJUSTE' | 'DESCUENTO' | 'INCREMENTO';
+  porcentajeAjuste?: number | null;
+  // ─────────────────────────────────────────────
   // Detalles — replace all line items when provided
   detalles?: Array<{
     tipoEnsayoId: number;
@@ -581,16 +640,26 @@ export async function updateQuotation(
       );
     }
 
-    // Update observaciones and diasVigenciaToken on the cotización itself
+    // Update cotización own fields (observaciones, diasVigenciaToken, Notas Comerciales)
     const hasCotPatch =
       input.observaciones !== undefined ||
-      input.diasVigenciaToken !== undefined;
+      input.diasVigenciaToken !== undefined ||
+      input.condicionPago !== undefined ||
+      input.cuentaPrincipalId !== undefined ||
+      input.cuentaSecundariaId !== undefined ||
+      input.tipoAjuste !== undefined ||
+      input.porcentajeAjuste !== undefined;
     if (hasCotPatch) {
       await tx
         .update(cotizacion)
         .set({
           ...(input.observaciones !== undefined && { observaciones: input.observaciones }),
           ...(input.diasVigenciaToken !== undefined && { diasVigenciaToken: input.diasVigenciaToken }),
+          ...(input.condicionPago !== undefined && { condicionPago: input.condicionPago }),
+          ...(input.cuentaPrincipalId !== undefined && { cuentaPrincipalId: input.cuentaPrincipalId }),
+          ...(input.cuentaSecundariaId !== undefined && { cuentaSecundariaId: input.cuentaSecundariaId }),
+          ...(input.tipoAjuste !== undefined && { tipoAjuste: input.tipoAjuste }),
+          ...(input.porcentajeAjuste !== undefined && { porcentajeAjuste: input.porcentajeAjuste !== null ? String(input.porcentajeAjuste) : null }),
           updatedAt: new Date(),
         })
         .where(eq(cotizacion.id, id));

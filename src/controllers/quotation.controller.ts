@@ -18,7 +18,7 @@ import { verifyQuotationToken } from '../services/token.service.js';
 import { CotizacionDocument } from '../pdf/cotizacion-document.js';
 import { AppError } from '../utils/app-error.js';
 import { db } from '../db/index.js';
-import { cotizacion } from '../db/schema/index.js';
+import { cotizacion, cuentaBancaria } from '../db/schema/index.js';
 import { eq } from 'drizzle-orm';
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>;
@@ -153,6 +153,12 @@ const updateQuotationSchema = z.object({
   telefonoEncargado: z.string().trim().regex(phoneRegex).optional(),
   observaciones:     z.string().trim().optional(),
   diasVigenciaToken: z.coerce.number().int().min(1).max(365).optional(),
+  // Notas Comerciales
+  condicionPago:     z.enum(['PAGO_100', 'PAGO_50', 'CREDITO_30_DIAS']).optional(),
+  cuentaPrincipalId: z.coerce.number().int().min(1).nullable().optional(),
+  cuentaSecundariaId: z.coerce.number().int().min(1).nullable().optional(),
+  tipoAjuste:        z.enum(['SIN_AJUSTE', 'DESCUENTO', 'INCREMENTO']).optional(),
+  porcentajeAjuste:  z.coerce.number().min(0).max(100).nullable().optional(),
   detalles:          z.array(detalleUpdateSchema).min(1).optional(),
   serviciosGenerales: z.array(servicioGeneralUpdateSchema).optional(),
 });
@@ -164,6 +170,17 @@ export const updateQuotationHandler: AsyncHandler = wrap(async (req, res) => {
   const body = assertValid(updateQuotationSchema.safeParse(req.body));
   const data = await updateQuotation(id, body);
   res.json({ status: 'success', data });
+});
+
+// ─── GET /quotations/cuentas ───────────────────────────────────────────────────
+
+export const getCuentasHandler: AsyncHandler = wrap(async (_req, res) => {
+  const cuentas = await db
+    .select()
+    .from(cuentaBancaria)
+    .where(eq(cuentaBancaria.activo, true))
+    .orderBy(cuentaBancaria.id);
+  res.json({ status: 'success', data: cuentas });
 });
 
 // ─── GET /quotations/:id/pdf ──────────────────────────────────────────────────
