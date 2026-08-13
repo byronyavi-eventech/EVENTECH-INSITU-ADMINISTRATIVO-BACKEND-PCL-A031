@@ -8,13 +8,16 @@ import {
   updateEstadoCotizacion,
   updateQuotation,
   getCotizacionById,
+  confirmarPago,
+  getComprobantesByCotizacion,
   EstadoCotizacion,
 } from '../services/quotation.service.js';
-import {
-  sendCotizacionEmail,
-  sendCotizacionClienteEmail,
-} from '../services/email.service.js';
+import { sendCotizacionEmail, sendCotizacionClienteEmail } from '../services/email.service.js';
 import { verifyQuotationToken } from '../services/token.service.js';
+import {
+  generateUploadPresignedUrls,
+  generateDownloadPresignedUrls,
+} from '../services/s3.service.js';
 import { CotizacionDocument } from '../pdf/cotizacion-document.js';
 import { AppError } from '../utils/app-error.js';
 import { db } from '../db/index.js';
@@ -23,9 +26,14 @@ import { eq } from 'drizzle-orm';
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>;
 
-const wrap = (fn: AsyncHandler): AsyncHandler =>
+const wrap =
+  (fn: AsyncHandler): AsyncHandler =>
   async (req, res, next) => {
-    try { await fn(req, res, next); } catch (err) { next(err); }
+    try {
+      await fn(req, res, next);
+    } catch (err) {
+      next(err);
+    }
   };
 
 function assertValid<T>(
@@ -43,35 +51,45 @@ const phoneRegex = /^(\+?56)?\s?9\s?[0-9]{4}\s?[0-9]{4}$/;
 // ─── POST /quotations/web ─────────────────────────────────────────────────────
 
 const ensayoLineSchema = z.object({
-  area:     z.string().trim().min(1, '"area" es requerido'),
-  subarea:  z.string().trim().min(1, '"subarea" es requerido'),
-  ensayo:   z.string().trim().min(1, '"ensayo" es requerido'),
+  area: z.string().trim().min(1, '"area" es requerido'),
+  subarea: z.string().trim().min(1, '"subarea" es requerido'),
+  ensayo: z.string().trim().min(1, '"ensayo" es requerido'),
   cantidad: z.coerce.number().int().min(1, '"cantidad" debe ser al menos 1'),
-  visitas:  z.coerce.number().int().min(1, '"visitas" debe ser al menos 1'),
+  visitas: z.coerce.number().int().min(1, '"visitas" debe ser al menos 1'),
 });
 
 const submitWebQuotationSchema = z.object({
-  rutEmpresa:        z.string().trim().min(1),
-  giroEmpresa:       z.string().trim().min(2).max(255),
-  nombreContacto:    z.string().trim().min(2).max(255),
-  celularContacto:   z.string().trim().regex(phoneRegex),
-  emailContacto:     z.string().trim().email().max(150).transform((s) => s.toLowerCase()),
-  direccionEmpresa:  z.string().trim().min(5).max(250),
-  regionEmpresa:     z.string().trim().min(1).max(100),
-  comunaEmpresa:     z.string().trim().min(1).max(100),
-  ciudadEmpresa:     z.string().trim().min(2).max(100),
-  nombreObra:        z.string().trim().min(2).max(200),
-  nombreMandante:    z.string().trim().min(2).max(200),
+  rutEmpresa: z.string().trim().min(1),
+  giroEmpresa: z.string().trim().min(2).max(255),
+  nombreContacto: z.string().trim().min(2).max(255),
+  celularContacto: z.string().trim().regex(phoneRegex),
+  emailContacto: z
+    .string()
+    .trim()
+    .email()
+    .max(150)
+    .transform((s) => s.toLowerCase()),
+  direccionEmpresa: z.string().trim().min(5).max(250),
+  regionEmpresa: z.string().trim().min(1).max(100),
+  comunaEmpresa: z.string().trim().min(1).max(100),
+  ciudadEmpresa: z.string().trim().min(2).max(100),
+  nombreObra: z.string().trim().min(2).max(200),
+  nombreMandante: z.string().trim().min(2).max(200),
   nombreContratista: z.string().trim().min(2).max(200),
-  ubicacionObra:     z.string().trim().min(5).max(300),
-  regionObra:        z.string().trim().min(1).max(100),
-  comunaObra:        z.string().trim().min(1).max(100),
-  ciudadObra:        z.string().trim().min(2).max(100),
-  duracionObra:      z.coerce.number().int().min(1),
-  nombreEncargado:   z.string().trim().min(2).max(150),
-  correoEncargado:   z.string().trim().email().max(150).transform((s) => s.toLowerCase()),
+  ubicacionObra: z.string().trim().min(5).max(300),
+  regionObra: z.string().trim().min(1).max(100),
+  comunaObra: z.string().trim().min(1).max(100),
+  ciudadObra: z.string().trim().min(2).max(100),
+  duracionObra: z.coerce.number().int().min(1),
+  nombreEncargado: z.string().trim().min(2).max(150),
+  correoEncargado: z
+    .string()
+    .trim()
+    .email()
+    .max(150)
+    .transform((s) => s.toLowerCase()),
   telefonoEncargado: z.string().trim().regex(phoneRegex),
-  ensayos:           z.array(ensayoLineSchema).min(1),
+  ensayos: z.array(ensayoLineSchema).min(1),
 });
 
 export const submitWebQuotationHandler: AsyncHandler = wrap(async (req, res) => {
@@ -84,9 +102,9 @@ export const submitWebQuotationHandler: AsyncHandler = wrap(async (req, res) => 
 
 const listSchema = z.object({
   estado: z.string().optional(),
-  q:      z.string().optional(),
-  page:   z.coerce.number().int().min(1).default(1),
-  limit:  z.coerce.number().int().min(1).max(100).default(20),
+  q: z.string().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 export const listQuotationsHandler: AsyncHandler = wrap(async (req, res) => {
@@ -103,6 +121,9 @@ const VALID_ESTADOS: EstadoCotizacion[] = [
   'FIRMADA',
   'ENVIADA_CLIENTE',
   'ACEPTADA_CLIENTE',
+  'ESPERA_VERIFICACION',
+  'PAGO_VERIFICADO',
+  'PAGO_RECHAZADO',
   'RECHAZADA_CLIENTE',
   'RECHAZADA',
   'VENCIDA',
@@ -127,39 +148,45 @@ export const updateEstadoHandler: AsyncHandler = wrap(async (req, res) => {
 // ─── PUT /quotations/:id ──────────────────────────────────────────────────────
 
 const detalleUpdateSchema = z.object({
-  tipoEnsayoId:    z.coerce.number().int().min(1),
+  tipoEnsayoId: z.coerce.number().int().min(1),
   cantidadEnsayos: z.coerce.number().int().min(1),
   cantidadVisitas: z.coerce.number().int().min(1),
-  precioUnitario:  z.string().trim().min(1),
+  precioUnitario: z.string().trim().min(1),
 });
 
 const servicioGeneralUpdateSchema = z.object({
-  descripcion:     z.string().trim().min(1).max(255),
-  cantidad:        z.coerce.number().int().min(0),
-  precioUnitario:  z.string().trim().min(1),
+  descripcion: z.string().trim().min(1).max(255),
+  cantidad: z.coerce.number().int().min(0),
+  precioUnitario: z.string().trim().min(1),
 });
 
 const updateQuotationSchema = z.object({
-  giroEmpresa:       z.string().trim().min(2).max(255).optional(),
-  nombreContacto:    z.string().trim().min(2).max(255).optional(),
-  celularContacto:   z.string().trim().regex(phoneRegex).optional(),
-  emailContacto:     z.string().trim().email().max(150).transform((s) => s.toLowerCase()).optional(),
-  direccionEmpresa:  z.string().trim().min(5).max(250).optional(),
-  regionEmpresa:     z.string().trim().min(1).max(100).optional(),
-  comunaEmpresa:     z.string().trim().min(1).max(100).optional(),
-  ciudadEmpresa:     z.string().trim().min(2).max(100).optional(),
-  nombreEncargado:   z.string().trim().min(2).max(150).optional(),
-  correoEncargado:   z.string().trim().email().max(150).optional(),
+  giroEmpresa: z.string().trim().min(2).max(255).optional(),
+  nombreContacto: z.string().trim().min(2).max(255).optional(),
+  celularContacto: z.string().trim().regex(phoneRegex).optional(),
+  emailContacto: z
+    .string()
+    .trim()
+    .email()
+    .max(150)
+    .transform((s) => s.toLowerCase())
+    .optional(),
+  direccionEmpresa: z.string().trim().min(5).max(250).optional(),
+  regionEmpresa: z.string().trim().min(1).max(100).optional(),
+  comunaEmpresa: z.string().trim().min(1).max(100).optional(),
+  ciudadEmpresa: z.string().trim().min(2).max(100).optional(),
+  nombreEncargado: z.string().trim().min(2).max(150).optional(),
+  correoEncargado: z.string().trim().email().max(150).optional(),
   telefonoEncargado: z.string().trim().regex(phoneRegex).optional(),
-  observaciones:     z.string().trim().optional(),
+  observaciones: z.string().trim().optional(),
   diasVigenciaToken: z.coerce.number().int().min(1).max(365).optional(),
   // Notas Comerciales
-  condicionPago:     z.enum(['PAGO_100', 'PAGO_50', 'CREDITO_30_DIAS']).optional(),
+  condicionPago: z.enum(['PAGO_100', 'PAGO_50', 'CREDITO_30_DIAS']).optional(),
   cuentaPrincipalId: z.coerce.number().int().min(1).nullable().optional(),
   cuentaSecundariaId: z.coerce.number().int().min(1).nullable().optional(),
-  tipoAjuste:        z.enum(['SIN_AJUSTE', 'DESCUENTO', 'INCREMENTO']).optional(),
-  porcentajeAjuste:  z.coerce.number().min(0).max(100).nullable().optional(),
-  detalles:          z.array(detalleUpdateSchema).min(1).optional(),
+  tipoAjuste: z.enum(['SIN_AJUSTE', 'DESCUENTO', 'INCREMENTO']).optional(),
+  porcentajeAjuste: z.coerce.number().min(0).max(100).nullable().optional(),
+  detalles: z.array(detalleUpdateSchema).min(1).optional(),
   serviciosGenerales: z.array(servicioGeneralUpdateSchema).optional(),
 });
 
@@ -192,25 +219,17 @@ export const getPdfHandler: AsyncHandler = wrap(async (req, res) => {
   const cotizacion = await getCotizacionById(id);
 
   if (cotizacion.estado !== 'FIRMADA') {
-    throw new AppError(
-      'Solo se puede generar PDF de cotizaciones en estado FIRMADA.',
-      422,
-    );
+    throw new AppError('Solo se puede generar PDF de cotizaciones en estado FIRMADA.', 422);
   }
 
   const pdfBuffer = await renderToBuffer(
     React.createElement(CotizacionDocument, { cotizacion }) as React.ReactElement<DocumentProps>,
   );
 
-  const docCode =
-    cotizacion.codigoCotizacion ??
-    `${String(cotizacion.id + 9999)}-LIA`;
+  const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
 
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader(
-    'Content-Disposition',
-    `inline; filename="cotizacion-${docCode}.pdf"`,
-  );
+  res.setHeader('Content-Disposition', `inline; filename="cotizacion-${docCode}.pdf"`);
   res.setHeader('Content-Length', pdfBuffer.length);
   res.end(pdfBuffer);
 });
@@ -224,10 +243,7 @@ export const sendEmailHandler: AsyncHandler = wrap(async (req, res) => {
   const cotizacion = await getCotizacionById(id);
 
   if (cotizacion.estado !== 'FIRMADA') {
-    throw new AppError(
-      'Solo se puede enviar email de cotizaciones en estado FIRMADA.',
-      422,
-    );
+    throw new AppError('Solo se puede enviar email de cotizaciones en estado FIRMADA.', 422);
   }
 
   await sendCotizacionEmail(cotizacion);
@@ -273,23 +289,26 @@ export const sendClienteEmailHandler: AsyncHandler = wrap(async (req, res) => {
 });
 
 // ─── GET /quotations/respond (PUBLIC — cliente hace click en el email) ─────────
+// Al hacer click en ACEPTAR → redirige a la página de upload en la landing page.
+// Al hacer click en RECHAZAR → cambia estado a RECHAZADA_CLIENTE directamente.
 
 export const respondQuotationHandler: AsyncHandler = wrap(async (req, res) => {
   const token = String(req.query.token ?? '');
   if (!token) throw new AppError('Token requerido.', 400);
 
-  const frontendUrl =
-    process.env.FRONTEND_URL ?? 'http://localhost:5173';
+  const landingUrl = process.env.LANDING_PAGE_URL ?? 'http://localhost:3001';
+  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
 
   let payload: Awaited<ReturnType<typeof verifyQuotationToken>>;
   try {
     payload = await verifyQuotationToken(token);
   } catch (err) {
     const msg = (err as Error).message;
-    return res.redirect(
+    res.redirect(
       302,
       `${frontendUrl}/cotizacion/respuesta?estado=error&mensaje=${encodeURIComponent(msg)}`,
     );
+    return;
   }
 
   const { cotizacionId, accion } = payload;
@@ -302,48 +321,210 @@ export const respondQuotationHandler: AsyncHandler = wrap(async (req, res) => {
     .limit(1);
 
   if (!existing) {
-    return res.redirect(
+    res.redirect(
       302,
       `${frontendUrl}/cotizacion/respuesta?estado=error&mensaje=${encodeURIComponent('Cotizacion no encontrada.')}`,
     );
+    return;
   }
 
-  // Idempotencia: si ya respondio, redirigir con el estado actual
-  if (
-    existing.estado === 'ACEPTADA_CLIENTE' ||
-    existing.estado === 'RECHAZADA_CLIENTE'
-  ) {
-    const estadoLabel = existing.estado === 'ACEPTADA_CLIENTE' ? 'aceptada' : 'rechazada';
-    return res.redirect(
+  // Idempotencia: si ya subió comprobantes, redirigir a upload page
+  if (existing.estado === 'ESPERA_VERIFICACION') {
+    res.redirect(
       302,
-      `${frontendUrl}/cotizacion/respuesta?estado=${estadoLabel}&cotizacionId=${cotizacionId}`,
+      `${landingUrl}/cotizacion/pago-upload?token=${encodeURIComponent(token)}&ya_enviado=1`,
     );
+    return;
+  }
+
+  // Idempotencia: ya rechazó
+  if (existing.estado === 'RECHAZADA_CLIENTE') {
+    res.redirect(
+      302,
+      `${frontendUrl}/cotizacion/respuesta?estado=rechazada&cotizacionId=${cotizacionId}`,
+    );
+    return;
   }
 
   // Solo se puede responder en estado ENVIADA_CLIENTE
   if (existing.estado !== 'ENVIADA_CLIENTE') {
-    return res.redirect(
+    res.redirect(
       302,
       `${frontendUrl}/cotizacion/respuesta?estado=error&mensaje=${encodeURIComponent('Esta cotizacion no esta disponible para respuesta.')}`,
     );
+    return;
   }
 
-  const nuevoEstado: EstadoCotizacion =
-    accion === 'ACEPTAR' ? 'ACEPTADA_CLIENTE' : 'RECHAZADA_CLIENTE';
+  if (accion === 'RECHAZAR') {
+    // Rechazar directamente — no requiere comprobantes
+    await db
+      .update(cotizacion)
+      .set({
+        estado: 'RECHAZADA_CLIENTE',
+        respuestaClienteAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(cotizacion.id, cotizacionId));
 
-  await db
-    .update(cotizacion)
-    .set({
-      estado: nuevoEstado,
-      respuestaClienteAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(cotizacion.id, cotizacionId));
+    res.redirect(
+      302,
+      `${frontendUrl}/cotizacion/respuesta?estado=rechazada&cotizacionId=${cotizacionId}`,
+    );
+    return;
+  }
 
-  const estadoLabel = nuevoEstado === 'ACEPTADA_CLIENTE' ? 'aceptada' : 'rechazada';
+  // ACEPTAR → redirigir a la página de upload de comprobantes en la landing page
+  res.redirect(302, `${landingUrl}/cotizacion/pago-upload?token=${encodeURIComponent(token)}`);
+});
 
-  return res.redirect(
-    302,
-    `${frontendUrl}/cotizacion/respuesta?estado=${estadoLabel}&cotizacionId=${cotizacionId}`,
-  );
+// ─── GET /quotations/upload-session (PUBLIC — cliente obtiene presigned URLs) ──
+// El cliente llega con el token del email y obtiene las presigned PUT URLs de S3.
+
+const fileDescriptorSchema = z.object({
+  nombreArchivo: z.string().trim().min(1).max(255),
+  contentType: z.enum(['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']),
+  sizeBytes: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10 * 1024 * 1024),
+});
+
+const uploadSessionSchema = z.object({
+  token: z.string().min(1),
+  files: z.array(fileDescriptorSchema).min(1).max(5),
+});
+
+export const getUploadSessionHandler: AsyncHandler = wrap(async (req, res) => {
+  const body = assertValid(uploadSessionSchema.safeParse(req.body));
+
+  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+
+  // Verificar token
+  let payload: Awaited<ReturnType<typeof verifyQuotationToken>>;
+  try {
+    payload = await verifyQuotationToken(body.token);
+  } catch (err) {
+    throw new AppError((err as Error).message, 401);
+  }
+
+  if (payload.accion !== 'ACEPTAR') {
+    throw new AppError('Token inválido para esta operación.', 401);
+  }
+
+  // Verificar estado de la cotización
+  const [existing] = await db
+    .select({ estado: cotizacion.estado })
+    .from(cotizacion)
+    .where(eq(cotizacion.id, payload.cotizacionId))
+    .limit(1);
+
+  if (!existing) {
+    throw new AppError('Cotización no encontrada.', 404);
+  }
+
+  if (existing.estado !== 'ENVIADA_CLIENTE') {
+    throw new AppError(
+      `No se pueden generar URLs de subida para cotizaciones en estado ${existing.estado}.`,
+      422,
+    );
+  }
+
+  // Generar presigned PUT URLs
+  const targets = await generateUploadPresignedUrls(payload.cotizacionId, body.files);
+
+  res.json({
+    status: 'success',
+    data: {
+      cotizacionId: payload.cotizacionId,
+      frontendUrl,
+      targets: targets.map((t) => ({
+        s3Key: t.s3Key,
+        nombreArchivo: t.nombreArchivo,
+        contentType: t.contentType,
+        sizeBytes: t.sizeBytes,
+        uploadUrl: t.uploadUrl,
+      })),
+    },
+  });
+});
+
+// ─── POST /quotations/confirmar-pago (PUBLIC — cliente confirma pago) ──────────
+
+const confirmarPagoSchema = z.object({
+  token: z.string().min(1),
+  comprobantes: z
+    .array(
+      z.object({
+        s3Key: z.string().min(1).max(512),
+        nombreArchivo: z.string().min(1).max(255),
+        contentType: z.enum(['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']),
+        sizeBytes: z.coerce.number().int().min(1),
+      }),
+    )
+    .min(1)
+    .max(5),
+});
+
+export const confirmarPagoHandler: AsyncHandler = wrap(async (req, res) => {
+  const body = assertValid(confirmarPagoSchema.safeParse(req.body));
+
+  // Verificar token
+  let payload: Awaited<ReturnType<typeof verifyQuotationToken>>;
+  try {
+    payload = await verifyQuotationToken(body.token);
+  } catch (err) {
+    throw new AppError((err as Error).message, 401);
+  }
+
+  if (payload.accion !== 'ACEPTAR') {
+    throw new AppError('Token inválido para esta operación.', 401);
+  }
+
+  const result = await confirmarPago(payload.cotizacionId, body.comprobantes);
+
+  res.json({
+    status: 'success',
+    data: result,
+    message: 'Comprobantes recibidos. La cotización está en espera de verificación de pago.',
+  });
+});
+
+// ─── GET /quotations/:id/comprobantes (PROTECTED — admin descarga comprobantes) ─
+
+export const getComprobantesHandler: AsyncHandler = wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) throw new AppError('ID inválido.', 400);
+
+  const comprobantes = await getComprobantesByCotizacion(id);
+
+  if (comprobantes.length === 0) {
+    res.json({ status: 'success', data: [] });
+    return;
+  }
+
+  // Generar presigned GET URLs para descarga
+  const withUrls = await generateDownloadPresignedUrls(comprobantes);
+
+  res.json({ status: 'success', data: withUrls });
+});
+
+// ─── PATCH /quotations/:id/verificar-pago (PROTECTED — admin verifica pago) ───
+
+export const verificarPagoHandler: AsyncHandler = wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) throw new AppError('ID inválido.', 400);
+
+  const data = await updateEstadoCotizacion(id, 'PAGO_VERIFICADO');
+  res.json({ status: 'success', data, message: 'Pago verificado exitosamente.' });
+});
+
+// ─── PATCH /quotations/:id/rechazar-pago (PROTECTED — admin rechaza comprobantes) ─
+
+export const rechazarPagoHandler: AsyncHandler = wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) throw new AppError('ID inválido.', 400);
+
+  const data = await updateEstadoCotizacion(id, 'PAGO_RECHAZADO');
+  res.json({ status: 'success', data, message: 'Comprobantes de pago rechazados.' });
 });

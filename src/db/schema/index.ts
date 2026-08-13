@@ -31,6 +31,9 @@ export * from './cuenta_bancaria.schema.js';
 // Quotation domain
 export * from './quotation.schema.js';
 
+// Payment receipts (comprobantes subidos por el cliente a S3)
+export * from './comprobante.schema.js';
+
 // Drizzle relations (for db.query.* typed access)
 export * from './relations.js';
 
