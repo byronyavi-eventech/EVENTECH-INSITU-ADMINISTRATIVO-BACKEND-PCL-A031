@@ -6,6 +6,7 @@ import {
   cotizacion,
   cotizacionDetalle,
   cotizacionServicioGeneral,
+  cotizacionComprobante,
   cuentaBancaria,
   tipoEnsayo,
   subareaEnsayo,
@@ -76,8 +77,22 @@ export interface QuotationListItem {
   condicionPago: string;
   tipoAjuste: string;
   porcentajeAjuste: string | null;
-  cuentaPrincipal: { id: number; banco: string; tipoCuenta: string; numeroCuenta: string; titular: string; rut: string } | null;
-  cuentaSecundaria: { id: number; banco: string; tipoCuenta: string; numeroCuenta: string; titular: string; rut: string } | null;
+  cuentaPrincipal: {
+    id: number;
+    banco: string;
+    tipoCuenta: string;
+    numeroCuenta: string;
+    titular: string;
+    rut: string;
+  } | null;
+  cuentaSecundaria: {
+    id: number;
+    banco: string;
+    tipoCuenta: string;
+    numeroCuenta: string;
+    titular: string;
+    rut: string;
+  } | null;
   // ───────────────────────────────────────────────
   cliente: {
     id: number;
@@ -233,7 +248,10 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
     ...rows.map((r) => r.cuentaSecundariaId).filter(Boolean),
   ] as number[];
   const cuentaRows = allCuentaIds.length
-    ? await db.select().from(cuentaBancaria).where(or(...allCuentaIds.map((cid) => eq(cuentaBancaria.id, cid))))
+    ? await db
+        .select()
+        .from(cuentaBancaria)
+        .where(or(...allCuentaIds.map((cid) => eq(cuentaBancaria.id, cid))))
     : [];
   const cuentaById = new Map(cuentaRows.map((c) => [c.id, c]));
 
@@ -296,8 +314,8 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
 
   const data: QuotationListItem[] = rows.map((r) => {
     const enc = encargadoByObraId.get(r.obraId);
-    const cp = r.cuentaPrincipalId ? cuentaById.get(r.cuentaPrincipalId) ?? null : null;
-    const cs = r.cuentaSecundariaId ? cuentaById.get(r.cuentaSecundariaId) ?? null : null;
+    const cp = r.cuentaPrincipalId ? (cuentaById.get(r.cuentaPrincipalId) ?? null) : null;
+    const cs = r.cuentaSecundariaId ? (cuentaById.get(r.cuentaSecundariaId) ?? null) : null;
     return {
       id: r.id,
       codigoCotizacion: r.codigoCotizacion,
@@ -310,8 +328,26 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
       condicionPago: r.condicionPago,
       tipoAjuste: r.tipoAjuste,
       porcentajeAjuste: r.porcentajeAjuste,
-      cuentaPrincipal: cp ? { id: cp.id, banco: cp.banco, tipoCuenta: cp.tipoCuenta, numeroCuenta: cp.numeroCuenta, titular: cp.titular, rut: cp.rut } : null,
-      cuentaSecundaria: cs ? { id: cs.id, banco: cs.banco, tipoCuenta: cs.tipoCuenta, numeroCuenta: cs.numeroCuenta, titular: cs.titular, rut: cs.rut } : null,
+      cuentaPrincipal: cp
+        ? {
+            id: cp.id,
+            banco: cp.banco,
+            tipoCuenta: cp.tipoCuenta,
+            numeroCuenta: cp.numeroCuenta,
+            titular: cp.titular,
+            rut: cp.rut,
+          }
+        : null,
+      cuentaSecundaria: cs
+        ? {
+            id: cs.id,
+            banco: cs.banco,
+            tipoCuenta: cs.tipoCuenta,
+            numeroCuenta: cs.numeroCuenta,
+            titular: cs.titular,
+            rut: cs.rut,
+          }
+        : null,
       cliente: {
         id: r.clienteId,
         rutEmpresa: r.rutEmpresa,
@@ -455,16 +491,20 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
     .where(eq(cotizacionServicioGeneral.cotizacionId, id));
 
   // Fetch cuentas bancarias for this cotizacion
-  const cuentaIdList = [
-    row.cuentaPrincipalId,
-    row.cuentaSecundariaId,
-  ].filter(Boolean) as number[];
+  const cuentaIdList = [row.cuentaPrincipalId, row.cuentaSecundariaId].filter(Boolean) as number[];
   const cuentaRowsSingle = cuentaIdList.length
-    ? await db.select().from(cuentaBancaria).where(or(...cuentaIdList.map((cid) => eq(cuentaBancaria.id, cid))))
+    ? await db
+        .select()
+        .from(cuentaBancaria)
+        .where(or(...cuentaIdList.map((cid) => eq(cuentaBancaria.id, cid))))
     : [];
   const cuentaByIdSingle = new Map(cuentaRowsSingle.map((c) => [c.id, c]));
-  const cpSingle = row.cuentaPrincipalId ? cuentaByIdSingle.get(row.cuentaPrincipalId) ?? null : null;
-  const csSingle = row.cuentaSecundariaId ? cuentaByIdSingle.get(row.cuentaSecundariaId) ?? null : null;
+  const cpSingle = row.cuentaPrincipalId
+    ? (cuentaByIdSingle.get(row.cuentaPrincipalId) ?? null)
+    : null;
+  const csSingle = row.cuentaSecundariaId
+    ? (cuentaByIdSingle.get(row.cuentaSecundariaId) ?? null)
+    : null;
 
   return {
     id: row.id,
@@ -478,8 +518,26 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
     condicionPago: row.condicionPago,
     tipoAjuste: row.tipoAjuste,
     porcentajeAjuste: row.porcentajeAjuste,
-    cuentaPrincipal: cpSingle ? { id: cpSingle.id, banco: cpSingle.banco, tipoCuenta: cpSingle.tipoCuenta, numeroCuenta: cpSingle.numeroCuenta, titular: cpSingle.titular, rut: cpSingle.rut } : null,
-    cuentaSecundaria: csSingle ? { id: csSingle.id, banco: csSingle.banco, tipoCuenta: csSingle.tipoCuenta, numeroCuenta: csSingle.numeroCuenta, titular: csSingle.titular, rut: csSingle.rut } : null,
+    cuentaPrincipal: cpSingle
+      ? {
+          id: cpSingle.id,
+          banco: cpSingle.banco,
+          tipoCuenta: cpSingle.tipoCuenta,
+          numeroCuenta: cpSingle.numeroCuenta,
+          titular: cpSingle.titular,
+          rut: cpSingle.rut,
+        }
+      : null,
+    cuentaSecundaria: csSingle
+      ? {
+          id: csSingle.id,
+          banco: csSingle.banco,
+          tipoCuenta: csSingle.tipoCuenta,
+          numeroCuenta: csSingle.numeroCuenta,
+          titular: csSingle.titular,
+          rut: csSingle.rut,
+        }
+      : null,
     cliente: {
       id: row.clienteId,
       rutEmpresa: row.rutEmpresa,
@@ -549,18 +607,24 @@ export async function updateEstadoCotizacion(
   if (!existing || existing.deletedAt) throw new AppError(`Cotización ${id} no encontrada.`, 404);
 
   // State-machine guardrails
-  // Flujo: NUEVA → ENVIADA_FIRMA → FIRMADA → ENVIADA_CLIENTE → ACEPTADA_CLIENTE
-  //                                                           ↘ RECHAZADA_CLIENTE
+  // Flujo: NUEVA → ENVIADA_FIRMA → FIRMADA → ENVIADA_CLIENTE
+  //                                               ↓
+  //                                       ESPERA_VERIFICACION → PAGO_VERIFICADO
+  //                                                           ↘ PAGO_RECHAZADO
+  //                                               ↘ RECHAZADA_CLIENTE
   const allowed: Record<string, EstadoCotizacion[]> = {
-    NUEVA:             ['ENVIADA_FIRMA', 'RECHAZADA', 'ANULADA'],
-    ENVIADA_FIRMA:     ['FIRMADA', 'RECHAZADA', 'ANULADA'],
-    FIRMADA:           ['ENVIADA_CLIENTE', 'RECHAZADA', 'ANULADA'],
-    ENVIADA_CLIENTE:   ['ACEPTADA_CLIENTE', 'RECHAZADA_CLIENTE', 'VENCIDA', 'ANULADA'],
-    ACEPTADA_CLIENTE:  ['ANULADA'],
+    NUEVA: ['ENVIADA_FIRMA', 'RECHAZADA', 'ANULADA'],
+    ENVIADA_FIRMA: ['FIRMADA', 'RECHAZADA', 'ANULADA'],
+    FIRMADA: ['ENVIADA_CLIENTE', 'RECHAZADA', 'ANULADA'],
+    ENVIADA_CLIENTE: ['ESPERA_VERIFICACION', 'RECHAZADA_CLIENTE', 'VENCIDA', 'ANULADA'],
+    ACEPTADA_CLIENTE: ['ANULADA'], // estado legado, mantenido por compatibilidad
+    ESPERA_VERIFICACION: ['PAGO_VERIFICADO', 'PAGO_RECHAZADO', 'ANULADA'],
+    PAGO_VERIFICADO: ['ANULADA'],
+    PAGO_RECHAZADO: ['ESPERA_VERIFICACION', 'ANULADA'],
     RECHAZADA_CLIENTE: ['NUEVA', 'ANULADA'],
-    RECHAZADA:         ['NUEVA'],
-    VENCIDA:           ['ANULADA'],
-    ANULADA:           [],
+    RECHAZADA: ['NUEVA'],
+    VENCIDA: ['ANULADA'],
+    ANULADA: [],
   };
 
   if (!allowed[existing.estado]?.includes(nuevoEstado)) {
@@ -654,12 +718,21 @@ export async function updateQuotation(
         .update(cotizacion)
         .set({
           ...(input.observaciones !== undefined && { observaciones: input.observaciones }),
-          ...(input.diasVigenciaToken !== undefined && { diasVigenciaToken: input.diasVigenciaToken }),
+          ...(input.diasVigenciaToken !== undefined && {
+            diasVigenciaToken: input.diasVigenciaToken,
+          }),
           ...(input.condicionPago !== undefined && { condicionPago: input.condicionPago }),
-          ...(input.cuentaPrincipalId !== undefined && { cuentaPrincipalId: input.cuentaPrincipalId }),
-          ...(input.cuentaSecundariaId !== undefined && { cuentaSecundariaId: input.cuentaSecundariaId }),
+          ...(input.cuentaPrincipalId !== undefined && {
+            cuentaPrincipalId: input.cuentaPrincipalId,
+          }),
+          ...(input.cuentaSecundariaId !== undefined && {
+            cuentaSecundariaId: input.cuentaSecundariaId,
+          }),
           ...(input.tipoAjuste !== undefined && { tipoAjuste: input.tipoAjuste }),
-          ...(input.porcentajeAjuste !== undefined && { porcentajeAjuste: input.porcentajeAjuste !== null ? String(input.porcentajeAjuste) : null }),
+          ...(input.porcentajeAjuste !== undefined && {
+            porcentajeAjuste:
+              input.porcentajeAjuste !== null ? String(input.porcentajeAjuste) : null,
+          }),
           updatedAt: new Date(),
         })
         .where(eq(cotizacion.id, id));
@@ -870,7 +943,10 @@ export async function submitWebQuotation(
           )
           .limit(1);
         if (!matchedSubarea) {
-          logger.warn({ areaNorm, subareaNorm }, 'quotation.service: subarea not found — ensayo skipped');
+          logger.warn(
+            { areaNorm, subareaNorm },
+            'quotation.service: subarea not found — ensayo skipped',
+          );
           continue;
         }
 
@@ -884,14 +960,17 @@ export async function submitWebQuotation(
         const normalizeStr = (str: string) => str.trim().normalize('NFC').toLowerCase();
         const targetEnsayo = normalizeStr(line.ensayo);
 
-        const matchedTipo = allTipos.find(
-          (t) => normalizeStr(t.nombreTipoEnsayo) === targetEnsayo
-        );
+        const matchedTipo = allTipos.find((t) => normalizeStr(t.nombreTipoEnsayo) === targetEnsayo);
 
         if (!matchedTipo) {
           logger.warn(
-            { areaNorm, subareaNorm, ensayoNorm, availableTipos: allTipos.map(t => t.nombreTipoEnsayo) },
-            'quotation.service: tipo_ensayo not found — ensayo skipped'
+            {
+              areaNorm,
+              subareaNorm,
+              ensayoNorm,
+              availableTipos: allTipos.map((t) => t.nombreTipoEnsayo),
+            },
+            'quotation.service: tipo_ensayo not found — ensayo skipped',
           );
           continue;
         }
@@ -932,4 +1011,106 @@ export async function submitWebQuotation(
 
   logger.info({ cotizacionId: result.cotizacionId }, 'quotation.service: submitWebQuotation OK');
   return result;
+}
+
+// ─── Confirmar pago (cliente subió comprobantes) ─────────────────────────────
+
+export interface ComprobanteInput {
+  s3Key: string;
+  nombreArchivo: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
+/**
+ * Guarda los comprobantes subidos por el cliente en la BD y cambia el estado
+ * de la cotización a ESPERA_VERIFICACION.
+ */
+export async function confirmarPago(
+  cotizacionId: number,
+  comprobantes: ComprobanteInput[],
+): Promise<{ id: number; estado: EstadoCotizacion }> {
+  logger.info(
+    { cotizacionId, count: comprobantes.length },
+    'quotation.service: confirmarPago start',
+  );
+
+  const [existing] = await db
+    .select({ id: cotizacion.id, estado: cotizacion.estado, deletedAt: cotizacion.deletedAt })
+    .from(cotizacion)
+    .where(eq(cotizacion.id, cotizacionId))
+    .limit(1);
+
+  if (!existing || existing.deletedAt) {
+    throw new AppError(`Cotización ${cotizacionId} no encontrada.`, 404);
+  }
+
+  if (existing.estado !== 'ENVIADA_CLIENTE') {
+    throw new AppError(
+      `No se pueden adjuntar comprobantes en estado ${existing.estado}. La cotización debe estar en estado ENVIADA_CLIENTE.`,
+      422,
+    );
+  }
+
+  if (comprobantes.length === 0) {
+    throw new AppError('Se requiere al menos un comprobante de pago.', 400);
+  }
+
+  const [updated] = await db.transaction(async (tx) => {
+    // Insertar comprobantes
+    await tx.insert(cotizacionComprobante).values(
+      comprobantes.map((c) => ({
+        cotizacionId,
+        s3Key: c.s3Key,
+        nombreArchivo: c.nombreArchivo,
+        contentType: c.contentType,
+        sizeBytes: c.sizeBytes,
+      })),
+    );
+
+    // Cambiar estado a ESPERA_VERIFICACION
+    const [upd] = await tx
+      .update(cotizacion)
+      .set({ estado: 'ESPERA_VERIFICACION', updatedAt: new Date() })
+      .where(eq(cotizacion.id, cotizacionId))
+      .returning({ id: cotizacion.id, estado: cotizacion.estado });
+
+    return [upd];
+  });
+
+  logger.info({ cotizacionId }, 'quotation.service: confirmarPago OK - estado ESPERA_VERIFICACION');
+  return updated;
+}
+
+// ─── Obtener comprobantes de una cotización ──────────────────────────────────
+
+export interface ComprobanteRecord {
+  id: number;
+  cotizacionId: number;
+  s3Key: string;
+  nombreArchivo: string;
+  contentType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export async function getComprobantesByCotizacion(
+  cotizacionId: number,
+): Promise<ComprobanteRecord[]> {
+  logger.debug({ cotizacionId }, 'quotation.service: getComprobantesByCotizacion');
+
+  const rows = await db
+    .select()
+    .from(cotizacionComprobante)
+    .where(eq(cotizacionComprobante.cotizacionId, cotizacionId));
+
+  return rows.map((r) => ({
+    id: r.id,
+    cotizacionId: r.cotizacionId,
+    s3Key: r.s3Key,
+    nombreArchivo: r.nombreArchivo,
+    contentType: r.contentType,
+    sizeBytes: r.sizeBytes,
+    createdAt: r.createdAt.toISOString(),
+  }));
 }
