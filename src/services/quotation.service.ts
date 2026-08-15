@@ -411,7 +411,9 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
 
 // ─── Get by ID ───────────────────────────────────────────────────────────────
 
-export async function getCotizacionById(id: number): Promise<QuotationListItem> {
+export async function getCotizacionById(
+  id: number,
+): Promise<QuotationListItem & { firmaBase64: string | null }> {
   const [row] = await db
     .select({
       id: cotizacion.id,
@@ -427,6 +429,7 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
       porcentajeAjuste: cotizacion.porcentajeAjuste,
       cuentaPrincipalId: cotizacion.cuentaPrincipalId,
       cuentaSecundariaId: cotizacion.cuentaSecundariaId,
+      firmaBase64: cotizacion.firmaBase64,
       clienteId: cliente.id,
       rutEmpresa: cliente.rutEmpresa,
       giroEmpresa: cliente.giroEmpresa,
@@ -538,6 +541,7 @@ export async function getCotizacionById(id: number): Promise<QuotationListItem> 
           rut: csSingle.rut,
         }
       : null,
+    firmaBase64: row.firmaBase64,
     cliente: {
       id: row.clienteId,
       rutEmpresa: row.rutEmpresa,
@@ -595,6 +599,7 @@ export type EstadoCotizacion = (typeof cotizacion.$inferSelect)['estado'];
 export async function updateEstadoCotizacion(
   id: number,
   nuevoEstado: EstadoCotizacion,
+  firmaBase64?: string,
 ): Promise<{ id: number; estado: EstadoCotizacion }> {
   logger.info({ id, nuevoEstado }, 'quotation.service: updateEstado');
 
@@ -633,7 +638,11 @@ export async function updateEstadoCotizacion(
 
   const [updated] = await db
     .update(cotizacion)
-    .set({ estado: nuevoEstado, updatedAt: new Date() })
+    .set({
+      estado: nuevoEstado,
+      updatedAt: new Date(),
+      ...(firmaBase64 !== undefined ? { firmaBase64 } : {}),
+    })
     .where(eq(cotizacion.id, id))
     .returning({ id: cotizacion.id, estado: cotizacion.estado });
 

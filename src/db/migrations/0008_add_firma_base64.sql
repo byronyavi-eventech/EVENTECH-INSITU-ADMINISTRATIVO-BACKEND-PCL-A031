@@ -1,0 +1,1 @@
+ALTER TABLE "cotizacion" ADD COLUMN "firma_base64" text;

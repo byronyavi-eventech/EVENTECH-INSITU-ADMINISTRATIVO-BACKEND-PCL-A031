@@ -58,6 +58,10 @@ export const cotizacion = pgTable(
     // Days the client has to respond after receiving the token email (default 15).
     diasVigenciaToken: integer('dias_vigencia_token').notNull().default(15),
 
+    // Firma (base64, sin prefijo data URI) capturada en el Mantenedor de Firmas
+    // al aceptar la cotización. Nullable — no todas las cotizaciones están firmadas.
+    firmaBase64: text('firma_base64'),
+
     // Internal user who created/entered the quote. NULL for web self-service.
     creadoPor: text('creado_por').references(() => user.id, {
       onDelete: 'set null',
