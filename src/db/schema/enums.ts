@@ -7,13 +7,12 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
 /**
- * Estado del ciclo de vida de una cotización (12 estados).
+ * Estado del ciclo de vida de una cotización (11 estados).
  *
  * NUEVA                → en edición, no enviada (antes BORRADOR)
  * ENVIADA_FIRMA        → enviada al jefe de laboratorio para firma
  * FIRMADA              → jefe de laboratorio aprobó y firmó
- * ENVIADA_CLIENTE      → PDF + botones ACEPTAR/RECHAZAR enviados al cliente por email
- * ACEPTADA_CLIENTE     → (DEPRECADO - no se usa en flujo nuevo)
+ * ENVIADA_CLIENTE      → PDF + botones enviados al cliente por email
  * RECHAZADA_CLIENTE    → cliente rechazó la cotización via email
  * ESPERA_VERIFICACION  → cliente subió comprobantes de pago, espera revisión admin
  * PAGO_VERIFICADO      → admin confirmó que el pago fue realizado
@@ -34,7 +33,6 @@ export const estadoCotizacionEnum = pgEnum('estado_cotizacion', [
   'ENVIADA_FIRMA',
   'FIRMADA',
   'ENVIADA_CLIENTE',
-  'ACEPTADA_CLIENTE',
   'RECHAZADA_CLIENTE',
   'ESPERA_VERIFICACION',
   'PAGO_VERIFICADO',
