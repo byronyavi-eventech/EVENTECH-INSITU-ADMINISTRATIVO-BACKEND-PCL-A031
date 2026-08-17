@@ -139,6 +139,7 @@ export interface QuotationListItem {
     cantidad: number;
     precioUnitario: string;
   }>;
+  comprobantesCount: number;
 }
 
 export interface ListQuotationsResult {
@@ -292,6 +293,21 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
     .from(cotizacionServicioGeneral)
     .where(or(...cotizacionIds.map((id) => eq(cotizacionServicioGeneral.cotizacionId, id))));
 
+  // Fetch comprobante counts per cotización (only relevant for ESPERA_VERIFICACION but cheap to always include)
+  const comprobanteCountRows = await db
+    .select({
+      cotizacionId: cotizacionComprobante.cotizacionId,
+      count: count(),
+    })
+    .from(cotizacionComprobante)
+    .where(or(...cotizacionIds.map((id) => eq(cotizacionComprobante.cotizacionId, id))))
+    .groupBy(cotizacionComprobante.cotizacionId);
+
+  const comprobantesCountById = new Map<number, number>();
+  for (const row of comprobanteCountRows) {
+    comprobantesCountById.set(row.cotizacionId, Number(row.count));
+  }
+
   // Group by cotizacion
   const encargadoByObraId = new Map<number, (typeof encargadoRows)[0]>();
   for (const enc of encargadoRows) {
@@ -395,6 +411,7 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
         cantidad: s.cantidad,
         precioUnitario: s.precioUnitario,
       })),
+      comprobantesCount: comprobantesCountById.get(r.id) ?? 0,
     };
   });
 
