@@ -714,13 +714,7 @@
         },
         "nombre_contacto": {
           "name": "nombre_contacto",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "apellidos_contacto": {
-          "name": "apellidos_contacto",
-          "type": "varchar(150)",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
         },
@@ -1497,6 +1491,78 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.cuenta_bancaria": {
+      "name": "cuenta_bancaria",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "banco": {
+          "name": "banco",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo_cuenta": {
+          "name": "tipo_cuenta",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numero_cuenta": {
+          "name": "numero_cuenta",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "titular": {
+          "name": "titular",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'LABORATORIO INSITU LTDA.'"
+        },
+        "rut": {
+          "name": "rut",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'76.290.113-7'"
+        },
+        "activo": {
+          "name": "activo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.cotizacion": {
       "name": "cotizacion",
       "schema": "",
@@ -1532,13 +1598,20 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'BORRADOR'"
+          "default": "'NUEVA'"
         },
         "observaciones": {
           "name": "observaciones",
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "dias_vigencia_token": {
+          "name": "dias_vigencia_token",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 15
         },
         "firma_base64": {
           "name": "firma_base64",
@@ -1558,6 +1631,52 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "token_enviado_at": {
+          "name": "token_enviado_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "respuesta_cliente_at": {
+          "name": "respuesta_cliente_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "condicion_pago": {
+          "name": "condicion_pago",
+          "type": "condicion_pago",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PAGO_100'"
+        },
+        "cuenta_principal_id": {
+          "name": "cuenta_principal_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cuenta_secundaria_id": {
+          "name": "cuenta_secundaria_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tipo_ajuste": {
+          "name": "tipo_ajuste",
+          "type": "tipo_ajuste",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'SIN_AJUSTE'"
+        },
+        "porcentaje_ajuste": {
+          "name": "porcentaje_ajuste",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
         },
         "deleted_at": {
           "name": "deleted_at",
@@ -1684,6 +1803,32 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
+        },
+        "cotizacion_cuenta_principal_id_cuenta_bancaria_id_fk": {
+          "name": "cotizacion_cuenta_principal_id_cuenta_bancaria_id_fk",
+          "tableFrom": "cotizacion",
+          "tableTo": "cuenta_bancaria",
+          "columnsFrom": [
+            "cuenta_principal_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "cotizacion_cuenta_secundaria_id_cuenta_bancaria_id_fk": {
+          "name": "cotizacion_cuenta_secundaria_id_cuenta_bancaria_id_fk",
+          "tableFrom": "cotizacion",
+          "tableTo": "cuenta_bancaria",
+          "columnsFrom": [
+            "cuenta_secundaria_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1712,13 +1857,13 @@
         },
         "cotizacion_id": {
           "name": "cotizacion_id",
-          "type": "bigserial",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "tipo_ensayo_id": {
           "name": "tipo_ensayo_id",
-          "type": "bigserial",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
