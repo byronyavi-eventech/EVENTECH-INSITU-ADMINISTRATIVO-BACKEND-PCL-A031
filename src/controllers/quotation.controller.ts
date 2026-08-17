@@ -1,8 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import React from 'react';
-import fs from 'fs';
-import path from 'path';
 import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer';
 import {
   submitWebQuotation,
@@ -20,12 +18,11 @@ import {
   generateUploadPresignedUrls,
   generateDownloadPresignedUrls,
 } from '../services/s3.service.js';
-import { CotizacionDocument } from '../pdf/cotizacion-document.js';
+import { CotizacionDocument, loadLogoDataUri } from '../pdf/cotizacion-document.js';
 import { AppError } from '../utils/app-error.js';
 import { db } from '../db/index.js';
 import { cotizacion, cuentaBancaria } from '../db/schema/index.js';
 import { eq } from 'drizzle-orm';
-import { logger } from '../utils/logger.js';
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>;
 
@@ -215,28 +212,6 @@ export const getCuentasHandler: AsyncHandler = wrap(async (_req, res) => {
 });
 
 // ─── GET /quotations/:id/pdf ──────────────────────────────────────────────────
-
-/**
- * Lee el logo del disco y arma un data URI base64.
- * react-pdf resuelve un `src` de tipo path de filesystem plano internamente vía
- * fetch(), que falla en silencio con paths sin esquema `file://` — el mismo
- * enfoque de data URI que ya usamos para firmaBase64 evita ese problema.
- * Si el archivo no existe, se loguea un warning y se omite la imagen (no rompe
- * la generación del PDF).
- */
-function loadLogoDataUri(): string | undefined {
-  const logoPath = path.join(process.cwd(), 'src', 'pdf', 'logo-insitu.png');
-  try {
-    const buffer = fs.readFileSync(logoPath);
-    return `data:image/png;base64,${buffer.toString('base64')}`;
-  } catch (err) {
-    logger.warn(
-      { err, logoPath },
-      'quotation.controller: no se pudo leer logo-insitu.png para el PDF, se omitirá la imagen.',
-    );
-    return undefined;
-  }
-}
 
 export const getPdfHandler: AsyncHandler = wrap(async (req, res) => {
   const id = Number(req.params.id);
