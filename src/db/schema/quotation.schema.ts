@@ -75,7 +75,7 @@ export const cotizacion = pgTable(
     // Timestamp when the last client-response token was issued (ENVIADA_CLIENTE).
     tokenEnviadoAt: timestamp('token_enviado_at', { withTimezone: true }),
 
-    // Timestamp when the client responded (ACEPTADA_CLIENTE / RECHAZADA_CLIENTE).
+    // Timestamp when the client responded (RECHAZADA_CLIENTE or ESPERA_VERIFICACION).
     respuestaClienteAt: timestamp('respuesta_cliente_at', { withTimezone: true }),
 
     // ── Notas Comerciales ─────────────────────────────────────────────────

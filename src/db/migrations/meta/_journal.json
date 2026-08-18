@@ -64,6 +64,13 @@
       "when": 1786379284012,
       "tag": "0008_add_firma_base64",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786938845309,
+      "tag": "0009_remove_aceptada_cliente",
+      "breakpoints": true
     }
   ]
 }
