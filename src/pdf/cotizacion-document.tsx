@@ -1,7 +1,9 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import fs from 'fs';
 import path from 'path';
 import type { QuotationListItem } from '../services/quotation.service.js';
+import { logger } from '../utils/logger.js';
 import {
   AREAS_SERVICIO,
   SERVICIOS_GENERALES,
@@ -261,7 +263,29 @@ const PDF_ASSETS_DIR =
     ? path.join(process.cwd(), 'dist', 'pdf')
     : path.join(process.cwd(), 'src', 'pdf');
 
-const getImagePath = (name: string) => path.join(PDF_ASSETS_DIR, name);
+export const getImagePath = (name: string) => path.join(PDF_ASSETS_DIR, name);
+
+/**
+ * Lee el logo del disco y arma un data URI base64.
+ * react-pdf resuelve un `src` de tipo path de filesystem plano internamente vía
+ * fetch(), que falla en silencio con paths sin esquema `file://` — el mismo
+ * enfoque de data URI que ya usamos para firmaBase64 evita ese problema.
+ * Si el archivo no existe, se loguea un warning y se omite la imagen (no rompe
+ * la generación del PDF).
+ */
+export function loadLogoDataUri(): string | undefined {
+  const logoPath = getImagePath('logo-insitu.png');
+  try {
+    const buffer = fs.readFileSync(logoPath);
+    return `data:image/png;base64,${buffer.toString('base64')}`;
+  } catch (err) {
+    logger.warn(
+      { err, logoPath },
+      'cotizacion-document: no se pudo leer logo-insitu.png para el PDF, se omitirá la imagen.',
+    );
+    return undefined;
+  }
+}
 
 interface CotizacionDocumentProps {
   cotizacion: QuotationListItem;

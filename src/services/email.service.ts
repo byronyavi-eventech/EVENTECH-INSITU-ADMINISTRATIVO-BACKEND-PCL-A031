@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer';
 import React from 'react';
-import { CotizacionDocument } from '../pdf/cotizacion-document.js';
+import { CotizacionDocument, loadLogoDataUri } from '../pdf/cotizacion-document.js';
 import type { QuotationListItem } from './quotation.service.js';
 import { logger } from '../utils/logger.js';
 import { generateQuotationToken } from './token.service.js';
@@ -239,7 +239,9 @@ function buildEmailHtml(cotizacion: QuotationListItem): string {
 </html>`;
 }
 
-export async function sendCotizacionEmail(cotizacion: QuotationListItem): Promise<void> {
+export async function sendCotizacionEmail(
+  cotizacion: QuotationListItem & { firmaBase64: string | null },
+): Promise<void> {
   logger.info(
     { cotizacionId: cotizacion.id, to: cotizacion.cliente.email },
     'email.service: sendCotizacionEmail start',
@@ -249,7 +251,11 @@ export async function sendCotizacionEmail(cotizacion: QuotationListItem): Promis
 
   // Generate PDF buffer
   const pdfBuffer = await renderToBuffer(
-    React.createElement(CotizacionDocument, { cotizacion }) as React.ReactElement<DocumentProps>,
+    React.createElement(CotizacionDocument, {
+      cotizacion,
+      firmaBase64: cotizacion.firmaBase64,
+      logoDataUri: loadLogoDataUri(),
+    }) as React.ReactElement<DocumentProps>,
   );
 
   // Send email via resend
@@ -567,7 +573,7 @@ function buildClientEmailHtml(
  * Cambia el estado de la cotizacion a ENVIADA_CLIENTE via la URL de respuesta.
  */
 export async function sendCotizacionClienteEmail(
-  cotizacion: QuotationListItem,
+  cotizacion: QuotationListItem & { firmaBase64: string | null },
   ttlDays?: number,
 ): Promise<void> {
   logger.info(
@@ -592,7 +598,11 @@ export async function sendCotizacionClienteEmail(
 
   // Generate PDF buffer
   const pdfBuffer = await renderToBuffer(
-    React.createElement(CotizacionDocument, { cotizacion }) as React.ReactElement<DocumentProps>,
+    React.createElement(CotizacionDocument, {
+      cotizacion,
+      firmaBase64: cotizacion.firmaBase64,
+      logoDataUri: loadLogoDataUri(),
+    }) as React.ReactElement<DocumentProps>,
   );
 
   const { error } = await resend.emails.send({
