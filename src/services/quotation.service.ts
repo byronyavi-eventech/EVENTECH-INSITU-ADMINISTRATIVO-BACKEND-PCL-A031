@@ -16,6 +16,11 @@ import {
 import { eq, and, ilike, isNull, or, count, sql, SQL, desc, inArray } from 'drizzle-orm';
 import { AppError } from '../utils/app-error.js';
 import { logger } from '../utils/logger.js';
+import { getEmailsByRole } from './user.service.js';
+import {
+  sendNuevaNotificationEmail,
+  sendEnviadaFirmaNotificationEmail,
+} from './email.service.js';
 
 export interface EnsayoLineInput {
   area: string;
@@ -678,6 +683,28 @@ export async function updateEstadoCotizacion(
     .returning({ id: cotizacion.id, estado: cotizacion.estado });
 
   logger.info({ id, nuevoEstado }, 'quotation.service: estado updated OK');
+
+  // ── Fire-and-forget internal notifications ─────────────────────────────────
+  if (nuevoEstado === 'NUEVA' || nuevoEstado === 'ENVIADA_FIRMA') {
+    const roleName =
+      nuevoEstado === 'NUEVA' ? 'ENCARGADO_ADMINISTRATIVO' : 'JEFE_LABORATORIO';
+    const sendFn =
+      nuevoEstado === 'NUEVA' ? sendNuevaNotificationEmail : sendEnviadaFirmaNotificationEmail;
+
+    getEmailsByRole(roleName)
+      .then((recipients) => {
+        if (recipients.length === 0) return;
+        return getCotizacionById(id).then((fullCot) => sendFn(fullCot, recipients));
+      })
+      .catch((err) =>
+        logger.error(
+          { err, id, nuevoEstado },
+          'quotation.service: failed to send internal notification',
+        ),
+      );
+  }
+  // ───────────────────────────────────────────────────────────────────────────
+
   return updated;
 }
 
@@ -1050,6 +1077,23 @@ export async function submitWebQuotation(
   });
 
   logger.info({ cotizacionId: result.cotizacionId }, 'quotation.service: submitWebQuotation OK');
+
+  // ── Notify ENCARGADO_ADMINISTRATIVO about the new quotation ────────────────
+  getEmailsByRole('ENCARGADO_ADMINISTRATIVO')
+    .then((recipients) => {
+      if (recipients.length === 0) return;
+      return getCotizacionById(result.cotizacionId).then((fullCot) =>
+        sendNuevaNotificationEmail(fullCot, recipients),
+      );
+    })
+    .catch((err) =>
+      logger.error(
+        { err, cotizacionId: result.cotizacionId },
+        'quotation.service: failed to send NUEVA notification (web submit)',
+      ),
+    );
+  // ───────────────────────────────────────────────────────────────────────────
+
   return result;
 }
 
