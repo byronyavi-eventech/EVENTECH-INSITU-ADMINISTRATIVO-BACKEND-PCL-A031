@@ -8,6 +8,7 @@ import {
   sendEmailHandler,
   sendClienteEmailHandler,
   respondQuotationHandler,
+  rechazarClienteHandler,
   getCuentasHandler,
   getUploadSessionHandler,
   confirmarPagoHandler,
@@ -30,8 +31,11 @@ quotationRouter.get('/respond', respondQuotationHandler);
 // Public — cliente obtiene presigned PUT URLs para subir comprobantes a S3
 quotationRouter.post('/upload-session', getUploadSessionHandler);
 
-// Public — cliente confirma que subió los comprobantes (cambia estado a ESPERA_VERIFICACION)
+// Public — cliente confirma pago
 quotationRouter.post('/confirmar-pago', confirmarPagoHandler);
+
+// Public — cliente rechaza cotización con motivo (landing page)
+quotationRouter.post('/rechazar-cliente', rechazarClienteHandler);
 
 // Protected — admin panel
 quotationRouter.get('/cuentas', requireAuth, getCuentasHandler);

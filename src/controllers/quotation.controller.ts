@@ -341,11 +341,11 @@ export const respondQuotationHandler: AsyncHandler = wrap(async (req, res) => {
     return;
   }
 
-  // Idempotencia: ya rechazó
+  // Idempotencia: ya rechazó — redirigir a la landing page (pantalla de éxito)
   if (existing.estado === 'RECHAZADA_CLIENTE') {
     res.redirect(
       302,
-      `${frontendUrl}/cotizacion/respuesta?estado=rechazada&cotizacionId=${cotizacionId}`,
+      `${landingUrl}/cotizacion/rechazar?token=${encodeURIComponent(token)}&ya_rechazado=1`,
     );
     return;
   }
@@ -360,20 +360,8 @@ export const respondQuotationHandler: AsyncHandler = wrap(async (req, res) => {
   }
 
   if (accion === 'RECHAZAR') {
-    // Rechazar directamente — no requiere comprobantes
-    await db
-      .update(cotizacion)
-      .set({
-        estado: 'RECHAZADA_CLIENTE',
-        respuestaClienteAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(cotizacion.id, cotizacionId));
-
-    res.redirect(
-      302,
-      `${frontendUrl}/cotizacion/respuesta?estado=rechazada&cotizacionId=${cotizacionId}`,
-    );
+    // No commit yet — redirect to landing page so the client can give a reason
+    res.redirect(302, `${landingUrl}/cotizacion/rechazar?token=${encodeURIComponent(token)}`);
     return;
   }
 
@@ -381,8 +369,67 @@ export const respondQuotationHandler: AsyncHandler = wrap(async (req, res) => {
   res.redirect(302, `${landingUrl}/cotizacion/pago-upload?token=${encodeURIComponent(token)}`);
 });
 
+// ─── POST /quotations/rechazar-cliente (PUBLIC — cliente confirma rechazo con comentario) ──
+// El cliente llega desde la landing page /cotizacion/rechazar con el token de email.
+// Valida token, guarda el comentario y confirma el estado RECHAZADA_CLIENTE.
+
+const rechazarClienteSchema = z.object({
+  token: z.string().min(1),
+  comentarioRechazo: z.string().max(500).optional(),
+});
+
+export const rechazarClienteHandler: AsyncHandler = wrap(async (req, res) => {
+  const body = assertValid(rechazarClienteSchema.safeParse(req.body));
+
+  let payload: Awaited<ReturnType<typeof verifyQuotationToken>>;
+  try {
+    payload = await verifyQuotationToken(body.token);
+  } catch (err) {
+    throw new AppError((err as Error).message, 401);
+  }
+
+  if (payload.accion !== 'RECHAZAR') {
+    throw new AppError('Token inválido para esta operación.', 401);
+  }
+
+  const { cotizacionId } = payload;
+
+  const [existing] = await db
+    .select({ estado: cotizacion.estado })
+    .from(cotizacion)
+    .where(eq(cotizacion.id, cotizacionId))
+    .limit(1);
+
+  if (!existing) throw new AppError('Cotización no encontrada.', 404);
+
+  // Idempotencia: ya rechazó — responder OK sin error
+  if (existing.estado === 'RECHAZADA_CLIENTE') {
+    res.json({ status: 'success', message: 'Cotización ya había sido rechazada.' });
+    return;
+  }
+
+  if (existing.estado !== 'ENVIADA_CLIENTE') {
+    throw new AppError('Esta cotización no está disponible para rechazo.', 409);
+  }
+
+  await db
+    .update(cotizacion)
+    .set({
+      estado: 'RECHAZADA_CLIENTE',
+      comentarioRechazo: body.comentarioRechazo ?? null,
+      respuestaClienteAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(cotizacion.id, cotizacionId));
+
+  logger.info({ cotizacionId }, 'quotation.service: cliente rechazó cotización');
+
+  res.json({ status: 'success', message: 'Cotización rechazada correctamente.' });
+});
+
 // ─── GET /quotations/upload-session (PUBLIC — cliente obtiene presigned URLs) ──
 // El cliente llega con el token del email y obtiene las presigned PUT URLs de S3.
+
 
 const fileDescriptorSchema = z.object({
   nombreArchivo: z.string().trim().min(1).max(255),

@@ -1,6 +1,6 @@
 {
-  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "prevId": "7f857baa-239e-485f-86e1-d67ae345a8b8",
+  "id": "664adc04-26a0-45b0-a563-c36d754e53a6",
+  "prevId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1615,6 +1615,18 @@
         },
         "firma_base64": {
           "name": "firma_base64",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo_rechazo": {
+          "name": "motivo_rechazo",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comentario_rechazo": {
+          "name": "comentario_rechazo",
           "type": "text",
           "primaryKey": false,
           "notNull": false
