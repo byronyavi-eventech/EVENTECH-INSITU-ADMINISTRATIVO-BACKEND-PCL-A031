@@ -20,6 +20,7 @@ import {
 } from '../services/s3.service.js';
 import { CotizacionDocument, loadLogoDataUri } from '../pdf/cotizacion-document.js';
 import { AppError } from '../utils/app-error.js';
+import { logger } from '../utils/logger.js';
 import { db } from '../db/index.js';
 import { cotizacion, cuentaBancaria } from '../db/schema/index.js';
 import { eq } from 'drizzle-orm';
