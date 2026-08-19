@@ -13,7 +13,7 @@ import {
   areaEnsayo,
   precioEnsayo,
 } from '../db/schema/index.js';
-import { eq, and, ilike, isNull, or, count, sql, SQL, desc } from 'drizzle-orm';
+import { eq, and, ilike, isNull, or, count, sql, SQL, desc, inArray } from 'drizzle-orm';
 import { AppError } from '../utils/app-error.js';
 import { logger } from '../utils/logger.js';
 
@@ -140,6 +140,9 @@ export interface QuotationListItem {
     precioUnitario: string;
   }>;
   comprobantesCount: number;
+  // Rejection reason captured on landing page (nullable)
+  motivoRechazo: string | null;
+  comentarioRechazo: string | null;
 }
 
 export interface ListQuotationsResult {
@@ -155,8 +158,11 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
 
   // Build filter conditions on cotizacion level
   const conditions: SQL[] = [isNull(cotizacion.deletedAt)];
-  if (estado)
+  if (estado === 'RECHAZADAS_AMBAS') {
+    conditions.push(inArray(cotizacion.estado, ['RECHAZADA', 'RECHAZADA_CLIENTE']));
+  } else if (estado) {
     conditions.push(eq(cotizacion.estado, estado as (typeof cotizacion.$inferSelect)['estado']));
+  }
 
   const baseWhere = and(...conditions);
 
@@ -176,6 +182,8 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
       porcentajeAjuste: cotizacion.porcentajeAjuste,
       cuentaPrincipalId: cotizacion.cuentaPrincipalId,
       cuentaSecundariaId: cotizacion.cuentaSecundariaId,
+      motivoRechazo: cotizacion.motivoRechazo,
+      comentarioRechazo: cotizacion.comentarioRechazo,
       // cliente fields
       clienteId: cliente.id,
       rutEmpresa: cliente.rutEmpresa,
@@ -344,6 +352,8 @@ export async function listQuotations(input: ListQuotationsInput): Promise<ListQu
       condicionPago: r.condicionPago,
       tipoAjuste: r.tipoAjuste,
       porcentajeAjuste: r.porcentajeAjuste,
+      motivoRechazo: r.motivoRechazo,
+      comentarioRechazo: r.comentarioRechazo,
       cuentaPrincipal: cp
         ? {
             id: cp.id,
@@ -447,6 +457,8 @@ export async function getCotizacionById(
       cuentaPrincipalId: cotizacion.cuentaPrincipalId,
       cuentaSecundariaId: cotizacion.cuentaSecundariaId,
       firmaBase64: cotizacion.firmaBase64,
+      motivoRechazo: cotizacion.motivoRechazo,
+      comentarioRechazo: cotizacion.comentarioRechazo,
       clienteId: cliente.id,
       rutEmpresa: cliente.rutEmpresa,
       giroEmpresa: cliente.giroEmpresa,
@@ -606,6 +618,9 @@ export async function getCotizacionById(
       cantidad: s.cantidad,
       precioUnitario: s.precioUnitario,
     })),
+    comprobantesCount: 0,
+    motivoRechazo: row.motivoRechazo,
+    comentarioRechazo: row.comentarioRechazo,
   };
 }
 

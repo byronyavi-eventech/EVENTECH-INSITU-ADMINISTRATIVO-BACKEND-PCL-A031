@@ -515,16 +515,34 @@ function buildClientEmailHtml(
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center" style="padding:0 8px;">
-                    <a href="${acceptUrl}"
-                       style="display:inline-block;background:#16a34a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;letter-spacing:.3px;">
-                      ACEPTAR COTIZACION
-                    </a>
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td align="center" bgcolor="#16a34a" style="border-radius:8px;">
+                          <a href="${acceptUrl}"
+                             target="_blank"
+                             style="display:block;background:#16a34a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;letter-spacing:.3px;mso-padding-alt:14px 40px;">
+                            <!--[if mso]>&nbsp;<![endif]-->
+                            ACEPTAR COTIZACION
+                            <!--[if mso]>&nbsp;<![endif]-->
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                   <td align="center" style="padding:0 8px;">
-                    <a href="${rejectUrl}"
-                       style="display:inline-block;background:#dc2626;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;letter-spacing:.3px;">
-                      RECHAZAR COTIZACION
-                    </a>
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td align="center" bgcolor="#dc2626" style="border-radius:8px;">
+                          <a href="${rejectUrl}"
+                             target="_blank"
+                             style="display:block;background:#dc2626;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;letter-spacing:.3px;mso-padding-alt:14px 40px;">
+                            <!--[if mso]>&nbsp;<![endif]-->
+                            RECHAZAR COTIZACION
+                            <!--[if mso]>&nbsp;<![endif]-->
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
@@ -533,6 +551,7 @@ function buildClientEmailHtml(
               </p>
             </td>
           </tr>
+
 
           <!-- Nota legal -->
           <tr>

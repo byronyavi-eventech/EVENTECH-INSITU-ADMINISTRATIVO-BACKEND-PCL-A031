@@ -62,6 +62,11 @@ export const cotizacion = pgTable(
     // al aceptar la cotización. Nullable — no todas las cotizaciones están firmadas.
     firmaBase64: text('firma_base64'),
 
+    // Razón de rechazo registrada por el cliente al hacer click en RECHAZAR
+    // (capturada en la landing page antes de confirmar). Nullable.
+    motivoRechazo: varchar('motivo_rechazo', { length: 100 }),
+    comentarioRechazo: text('comentario_rechazo'),
+
     // Internal user who created/entered the quote. NULL for web self-service.
     creadoPor: text('creado_por').references(() => user.id, {
       onDelete: 'set null',
