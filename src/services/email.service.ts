@@ -650,3 +650,335 @@ export async function sendCotizacionClienteEmail(
     'email.service: sendCotizacionClienteEmail OK',
   );
 }
+
+// ---------------------------------------------------------------------------
+// Email interno — NUEVA cotización → ENCARGADO_ADMINISTRATIVO
+// ---------------------------------------------------------------------------
+
+function buildNuevaNotificationHtml(cotizacion: QuotationListItem): string {
+  const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
+  const totalEnsayos = cotizacion.detalles.reduce((acc, d) => acc + d.cantidadEnsayos, 0);
+  const subtotal = cotizacion.detalles.reduce(
+    (acc, d) => acc + parseFloat(d.precioUnitario) * d.cantidadEnsayos * d.cantidadVisitas,
+    0,
+  );
+  const porcentaje = cotizacion.porcentajeAjuste ? parseFloat(cotizacion.porcentajeAjuste) : 0;
+  let ajuste = 0;
+  if (cotizacion.tipoAjuste === 'DESCUENTO') ajuste = -(subtotal * porcentaje / 100);
+  else if (cotizacion.tipoAjuste === 'INCREMENTO') ajuste = subtotal * porcentaje / 100;
+  const totalFinal = (subtotal + ajuste).toFixed(2);
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nueva Cotización ${docCode} — Laboratorio Insitu</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#ffffff;padding:28px 36px;border-bottom:2px solid #c8102e;">
+              <table width="100%">
+                <tr>
+                  <td>
+                    <p style="margin:0;font-size:24px;font-weight:900;color:#c8102e;letter-spacing:1px;">INSITU</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">Laboratorio de Ensayos y Calidad</p>
+                  </td>
+                  <td align="right">
+                    <p style="margin:0;font-size:14px;font-weight:700;color:#111827;">NOTIFICACIÓN INTERNA</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#c8102e;font-weight:700;">Nº ${docCode}</p>
+                    <span style="display:inline-block;margin-top:8px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">&#x2B50; NUEVA COTIZACIÓN</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Saludo -->
+          <tr>
+            <td style="padding:28px 36px 0;">
+              <p style="margin:0;font-size:15px;color:#111827;">Se ha recibido una nueva solicitud de cotización.</p>
+              <p style="margin:10px 0 0;font-size:14px;color:#6b7280;line-height:1.6;">
+                Ingrese al sistema para revisar, asignar precio y procesar la cotización.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Datos cliente / obra -->
+          <tr>
+            <td style="padding:24px 36px 0;">
+              <div style="background:#fffbeb;padding:8px 12px;margin-bottom:12px;border-radius:4px;border-left:3px solid #f5a623;">
+                <p style="margin:0;font-size:11px;font-weight:700;color:#c8102e;text-transform:uppercase;letter-spacing:.5px;">Datos del Solicitante y Obra</p>
+              </div>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;width:40%;">Empresa / Razón Social</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.cliente.giroEmpresa}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Contacto</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.cliente.nombreContacto}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Email</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.cliente.email}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Teléfono</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.cliente.celularContacto}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Obra</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.obra.nombreObra}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Ubicación</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.obra.ubicacionObra}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Ensayos solicitados</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.detalles.length} tipo(s) · ${totalEnsayos} ensayo(s)</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Total estimado</td>
+                  <td style="padding:10px 16px;font-size:14px;font-weight:800;color:#c8102e;">UF ${totalFinal}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer note -->
+          <tr>
+            <td style="padding:32px 36px 24px;">
+              <p style="margin:0;font-size:12px;color:#6b7280;line-height:1.6;">
+                Este es un mensaje automático del sistema de cotizaciones de Laboratorio Insitu.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:16px 36px;">
+              <table width="100%">
+                <tr>
+                  <td style="font-size:11px;color:#9ca3af;">© ${new Date().getFullYear()} Laboratorio Insitu · www.laboratorioinsitu.cl</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/**
+ * Sends an internal notification to all ENCARGADO_ADMINISTRATIVO users
+ * when a quotation is in state NUEVA.
+ * Fire-and-forget: the caller should .catch() errors.
+ */
+export async function sendNuevaNotificationEmail(
+  cotizacion: QuotationListItem,
+  recipients: string[],
+): Promise<void> {
+  if (recipients.length === 0) return;
+
+  const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
+
+  logger.info(
+    { cotizacionId: cotizacion.id, recipients },
+    'email.service: sendNuevaNotificationEmail start',
+  );
+
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to: recipients,
+    subject: `Nueva cotización recibida — ${docCode} — ${cotizacion.obra.nombreObra}`,
+    html: buildNuevaNotificationHtml(cotizacion),
+  });
+
+  if (error) {
+    logger.error(
+      { cotizacionId: cotizacion.id, error },
+      'email.service: resend error (nueva notification)',
+    );
+    throw new Error(`Error al enviar notificación NUEVA: ${error.message}`);
+  }
+
+  logger.info(
+    { cotizacionId: cotizacion.id, recipients },
+    'email.service: sendNuevaNotificationEmail OK',
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Email interno — ENVIADA_FIRMA → JEFE_LABORATORIO
+// ---------------------------------------------------------------------------
+
+function buildEnviadaFirmaNotificationHtml(cotizacion: QuotationListItem): string {
+  const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
+  const subtotal = cotizacion.detalles.reduce(
+    (acc, d) => acc + parseFloat(d.precioUnitario) * d.cantidadEnsayos * d.cantidadVisitas,
+    0,
+  );
+  const porcentaje = cotizacion.porcentajeAjuste ? parseFloat(cotizacion.porcentajeAjuste) : 0;
+  let ajuste = 0;
+  if (cotizacion.tipoAjuste === 'DESCUENTO') ajuste = -(subtotal * porcentaje / 100);
+  else if (cotizacion.tipoAjuste === 'INCREMENTO') ajuste = subtotal * porcentaje / 100;
+  const totalFinal = (subtotal + ajuste).toFixed(2);
+
+  const condicionPagoLabel: Record<string, string> = {
+    PAGO_100: 'Pago 100% anticipado',
+    PAGO_50: 'Pago 50% al inicio',
+    CREDITO_30_DIAS: 'Crédito a 30 días',
+  };
+  const condLabel = condicionPagoLabel[cotizacion.condicionPago] ?? cotizacion.condicionPago;
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cotización ${docCode} requiere firma — Laboratorio Insitu</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#ffffff;padding:28px 36px;border-bottom:2px solid #c8102e;">
+              <table width="100%">
+                <tr>
+                  <td>
+                    <p style="margin:0;font-size:24px;font-weight:900;color:#c8102e;letter-spacing:1px;">INSITU</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">Laboratorio de Ensayos y Calidad</p>
+                  </td>
+                  <td align="right">
+                    <p style="margin:0;font-size:14px;font-weight:700;color:#111827;">NOTIFICACIÓN INTERNA</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#c8102e;font-weight:700;">Nº ${docCode}</p>
+                    <span style="display:inline-block;margin-top:8px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">&#x270D; PENDIENTE DE FIRMA</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Saludo -->
+          <tr>
+            <td style="padding:28px 36px 0;">
+              <p style="margin:0;font-size:15px;color:#111827;">Una cotización ha sido enviada a firma y requiere su atención.</p>
+              <p style="margin:10px 0 0;font-size:14px;color:#6b7280;line-height:1.6;">
+                Ingrese al sistema para revisar el documento y proceder con la firma.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Datos cliente / obra -->
+          <tr>
+            <td style="padding:24px 36px 0;">
+              <div style="background:#fffbeb;padding:8px 12px;margin-bottom:12px;border-radius:4px;border-left:3px solid #f5a623;">
+                <p style="margin:0;font-size:11px;font-weight:700;color:#c8102e;text-transform:uppercase;letter-spacing:.5px;">Datos del Cliente y Obra</p>
+              </div>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;width:40%;">Empresa / Razón Social</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.cliente.giroEmpresa}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Contacto</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.cliente.nombreContacto}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Obra</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.obra.nombreObra}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Ubicación</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.obra.ubicacionObra}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Condición de Pago</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${condLabel}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Total estimado</td>
+                  <td style="padding:10px 16px;font-size:14px;font-weight:800;color:#c8102e;">UF ${totalFinal}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer note -->
+          <tr>
+            <td style="padding:32px 36px 24px;">
+              <p style="margin:0;font-size:12px;color:#6b7280;line-height:1.6;">
+                Este es un mensaje automático del sistema de cotizaciones de Laboratorio Insitu.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:16px 36px;">
+              <table width="100%">
+                <tr>
+                  <td style="font-size:11px;color:#9ca3af;">© ${new Date().getFullYear()} Laboratorio Insitu · www.laboratorioinsitu.cl</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/**
+ * Sends an internal notification to all JEFE_LABORATORIO users
+ * when a quotation transitions to ENVIADA_FIRMA.
+ * Fire-and-forget: the caller should .catch() errors.
+ */
+export async function sendEnviadaFirmaNotificationEmail(
+  cotizacion: QuotationListItem,
+  recipients: string[],
+): Promise<void> {
+  if (recipients.length === 0) return;
+
+  const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
+
+  logger.info(
+    { cotizacionId: cotizacion.id, recipients },
+    'email.service: sendEnviadaFirmaNotificationEmail start',
+  );
+
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to: recipients,
+    subject: `Cotización ${docCode} requiere su firma — ${cotizacion.obra.nombreObra}`,
+    html: buildEnviadaFirmaNotificationHtml(cotizacion),
+  });
+
+  if (error) {
+    logger.error(
+      { cotizacionId: cotizacion.id, error },
+      'email.service: resend error (enviada_firma notification)',
+    );
+    throw new Error(`Error al enviar notificación ENVIADA_FIRMA: ${error.message}`);
+  }
+
+  logger.info(
+    { cotizacionId: cotizacion.id, recipients },
+    'email.service: sendEnviadaFirmaNotificationEmail OK',
+  );
+}
