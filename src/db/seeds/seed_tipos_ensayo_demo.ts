@@ -19,7 +19,11 @@ async function seedTiposEnsayoDemo() {
       { subareaId: 3, nombreTipoEnsayo: 'Cono de Asentamiento', codigoNorma: 'NCh1019' },
       { subareaId: 4, nombreTipoEnsayo: 'Densidad In Situ', codigoNorma: 'ASTM D6938' },
     ];
-    const insertados = await db.insert(tipoEnsayo).values(datosTiposEnsayo).returning();
+    const insertados = await db
+      .insert(tipoEnsayo)
+      .values(datosTiposEnsayo)
+      .onConflictDoNothing()
+      .returning();
     logger.info({ count: insertados.length }, 'Tipos de ensayo de demo insertados');
     console.table(insertados);
 

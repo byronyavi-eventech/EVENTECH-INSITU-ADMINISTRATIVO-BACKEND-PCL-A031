@@ -182,7 +182,7 @@ async function main() {
   let [labDictuc] = await db
     .select()
     .from(laboratorioCalibrador)
-    .where(eq(laboratorioCalibrador.nombre, 'DICTUC'));
+    .where(eq(laboratorioCalibrador.nombre, 'DICTUC ISO-17025'));
   if (!labDictuc) {
     [labDictuc] = await db
       .insert(laboratorioCalibrador)
