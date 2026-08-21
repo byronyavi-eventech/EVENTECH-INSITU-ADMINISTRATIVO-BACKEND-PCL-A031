@@ -10,19 +10,22 @@ import { relations } from 'drizzle-orm';
 import { user, session, account } from './auth.schema.js';
 import { userProfile } from './profile.schema.js';
 import { rol, usuarioRol } from './rbac.schema.js';
-import {
-  cliente,
-  obra,
-  encargadoObra,
-} from './client.schema.js';
-import {
-  areaEnsayo,
-  subareaEnsayo,
-  tipoEnsayo,
-  precioEnsayo,
-} from './catalog.schema.js';
+import { cliente, obra, encargadoObra } from './client.schema.js';
+import { areaEnsayo, subareaEnsayo, tipoEnsayo, precioEnsayo } from './catalog.schema.js';
 import { cotizacion, cotizacionDetalle, cotizacionServicioGeneral } from './quotation.schema.js';
 import { cuentaBancaria } from './cuenta_bancaria.schema.js';
+import {
+  empresa,
+  sucursal,
+  ubicacion,
+  grupo,
+  tipoEquipo,
+  equipo,
+  equipoTipoEnsayo,
+  historialCalibracion,
+  historialVerificacion,
+  historialMantenimiento,
+} from './equipo.schema.js';
 
 // ---------------------------------------------------------------------------
 // Better Auth tables
@@ -109,16 +112,13 @@ export const areaEnsayoRelations = relations(areaEnsayo, ({ many }) => ({
   subareas: many(subareaEnsayo),
 }));
 
-export const subareaEnsayoRelations = relations(
-  subareaEnsayo,
-  ({ one, many }) => ({
-    area: one(areaEnsayo, {
-      fields: [subareaEnsayo.areaId],
-      references: [areaEnsayo.id],
-    }),
-    tiposEnsayo: many(tipoEnsayo),
+export const subareaEnsayoRelations = relations(subareaEnsayo, ({ one, many }) => ({
+  area: one(areaEnsayo, {
+    fields: [subareaEnsayo.areaId],
+    references: [areaEnsayo.id],
   }),
-);
+  tiposEnsayo: many(tipoEnsayo),
+}));
 
 export const tipoEnsayoRelations = relations(tipoEnsayo, ({ one, many }) => ({
   subarea: one(subareaEnsayo, {
@@ -165,19 +165,16 @@ export const cuentaBancariaRelations = relations(cuentaBancaria, ({ many }) => (
   cotizacionesSecundaria: many(cotizacion, { relationName: 'cuentaSecundaria' }),
 }));
 
-export const cotizacionDetalleRelations = relations(
-  cotizacionDetalle,
-  ({ one }) => ({
-    cotizacion: one(cotizacion, {
-      fields: [cotizacionDetalle.cotizacionId],
-      references: [cotizacion.id],
-    }),
-    tipoEnsayo: one(tipoEnsayo, {
-      fields: [cotizacionDetalle.tipoEnsayoId],
-      references: [tipoEnsayo.id],
-    }),
+export const cotizacionDetalleRelations = relations(cotizacionDetalle, ({ one }) => ({
+  cotizacion: one(cotizacion, {
+    fields: [cotizacionDetalle.cotizacionId],
+    references: [cotizacion.id],
   }),
-);
+  tipoEnsayo: one(tipoEnsayo, {
+    fields: [cotizacionDetalle.tipoEnsayoId],
+    references: [tipoEnsayo.id],
+  }),
+}));
 
 export const cotizacionServicioGeneralRelations = relations(
   cotizacionServicioGeneral,
@@ -188,3 +185,59 @@ export const cotizacionServicioGeneralRelations = relations(
     }),
   }),
 );
+
+// ---------------------------------------------------------------------------
+// Equipos (Mantenedores/Laboratorio)
+// ---------------------------------------------------------------------------
+
+export const empresaRelations = relations(empresa, ({ many }) => ({
+  sucursales: many(sucursal),
+  equipos: many(equipo),
+}));
+
+export const sucursalRelations = relations(sucursal, ({ one, many }) => ({
+  empresa: one(empresa, { fields: [sucursal.empresaId], references: [empresa.id] }),
+  ubicaciones: many(ubicacion),
+  equipos: many(equipo),
+}));
+
+export const ubicacionRelations = relations(ubicacion, ({ one, many }) => ({
+  sucursal: one(sucursal, { fields: [ubicacion.sucursalId], references: [sucursal.id] }),
+  equipos: many(equipo),
+}));
+
+export const grupoRelations = relations(grupo, ({ many }) => ({
+  tiposEquipo: many(tipoEquipo),
+}));
+
+export const tipoEquipoRelations = relations(tipoEquipo, ({ one, many }) => ({
+  grupo: one(grupo, { fields: [tipoEquipo.grupoId], references: [grupo.id] }),
+  equipos: many(equipo),
+}));
+
+export const equipoRelations = relations(equipo, ({ one, many }) => ({
+  tipoEquipo: one(tipoEquipo, { fields: [equipo.tipoEquipoId], references: [tipoEquipo.id] }),
+  empresa: one(empresa, { fields: [equipo.empresaId], references: [empresa.id] }),
+  sucursal: one(sucursal, { fields: [equipo.sucursalId], references: [sucursal.id] }),
+  ubicacion: one(ubicacion, { fields: [equipo.ubicacionId], references: [ubicacion.id] }),
+  calibraciones: many(historialCalibracion),
+  verificaciones: many(historialVerificacion),
+  mantenimientos: many(historialMantenimiento),
+  tiposEnsayo: many(equipoTipoEnsayo),
+}));
+
+export const equipoTipoEnsayoRelations = relations(equipoTipoEnsayo, ({ one }) => ({
+  equipo: one(equipo, { fields: [equipoTipoEnsayo.equipoId], references: [equipo.id] }),
+}));
+
+export const historialCalibracionRelations = relations(historialCalibracion, ({ one }) => ({
+  equipo: one(equipo, { fields: [historialCalibracion.equipoId], references: [equipo.id] }),
+}));
+
+export const historialVerificacionRelations = relations(historialVerificacion, ({ one }) => ({
+  equipo: one(equipo, { fields: [historialVerificacion.equipoId], references: [equipo.id] }),
+}));
+
+export const historialMantenimientoRelations = relations(historialMantenimiento, ({ one }) => ({
+  equipo: one(equipo, { fields: [historialMantenimiento.equipoId], references: [equipo.id] }),
+}));
