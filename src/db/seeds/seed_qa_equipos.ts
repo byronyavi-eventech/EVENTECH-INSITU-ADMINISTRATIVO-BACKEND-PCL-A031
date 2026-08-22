@@ -172,6 +172,11 @@ async function main() {
     .from(sucursal)
     .where(and(eq(sucursal.empresaId, emp.id), eq(sucursal.nombre, 'Arica')));
   if (!suc) throw new Error('Catálogo incompleto: falta sucursal "Arica".');
+  await db
+    .insert(ubicacion)
+    .values({ sucursalId: suc.id, nombre: 'Laboratorio' })
+    .onConflictDoNothing();
+
   const [ubLab] = await db
     .select()
     .from(ubicacion)

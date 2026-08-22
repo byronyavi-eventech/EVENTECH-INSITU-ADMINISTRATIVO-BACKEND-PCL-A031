@@ -116,6 +116,15 @@ async function main() {
   if (!suc)
     throw new Error('Catálogo incompleto: no se encontró la sucursal "Arica". ¿Corriste init.sql?');
 
+  await db
+    .insert(ubicacion)
+    .values([
+      { sucursalId: suc.id, nombre: 'Laboratorio' },
+      { sucursalId: suc.id, nombre: 'Bodega' },
+      { sucursalId: suc.id, nombre: 'Terreno' },
+    ])
+    .onConflictDoNothing();
+
   const ubicaciones = await db.select().from(ubicacion).where(eq(ubicacion.sucursalId, suc.id));
   const ubLab = await requireByName(ubicaciones, 'Laboratorio', 'ubicaciones');
   const ubBodega = await requireByName(ubicaciones, 'Bodega', 'ubicaciones');
@@ -148,6 +157,11 @@ async function main() {
     throw new Error(
       'Catálogo incompleto: no se encontró el laboratorio "CESMEC". ¿Corriste init.sql?',
     );
+
+  await db
+    .insert(procedimientoEquipo)
+    .values({ codigo: 'PT-001', descripcion: 'Procedimiento PT-001' })
+    .onConflictDoNothing();
 
   const procs = await db.select().from(procedimientoEquipo);
   const proc001 = procs.find((p) => p.codigo === 'PT-001');

@@ -18,6 +18,7 @@ import { cliente, obra, encargadoObra } from '../schema/client.schema.js';
 import { cuentaBancaria } from '../schema/cuenta_bancaria.schema.js';
 import { cotizacion, cotizacionDetalle, cotizacionServicioGeneral } from '../schema/quotation.schema.js';
 import { tipoEnsayo, precioEnsayo } from '../schema/catalog.schema.js';
+import { user } from '../schema/auth.schema.js';
 import { logger } from '../../utils/logger.js';
 
 // Usuario Better Auth real, creado en Capa 2 QA (qa-tester@example.com).
@@ -45,6 +46,18 @@ async function generarCodigo(): Promise<string> {
 
 async function main() {
   logger.info('🌱 Sembrando cotizaciones de prueba QA (INSERT directo)...');
+
+  await db
+    .insert(user)
+    .values({
+      id: QA_INTERNAL_USER_ID,
+      name: 'QA Tester',
+      email: 'qa-tester@example.com',
+      emailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .onConflictDoNothing();
 
   // ── Datos base ──────────────────────────────────────────────────────────
   await db

@@ -210,9 +210,13 @@ async function main() {
       .where(eq(tipoEquipo.nombre, actual))
       .returning({ id: tipoEquipo.id });
     if (res.length === 0) {
-      logger.warn(
-        { actual, nuevoNombre },
-        '⚠️  Tipo existente no encontrado (¿ya renombrado?), se omite',
+      await db
+        .insert(tipoEquipo)
+        .values({ nombre: nuevoNombre, grupoId })
+        .onConflictDoNothing();
+      logger.info(
+        { nuevoNombre, grupo: nombreGrupo },
+        '✓ Tipo base sembrado (no existía previamente)',
       );
     } else {
       logger.info(
