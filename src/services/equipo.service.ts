@@ -35,7 +35,7 @@ import {
   equipoTipoEnsayo,
   tipoEnsayo,
   unidadMedida,
-  usuario,
+  user,
   type NuevoEquipo,
 } from '../db/schema/index.js';
 import { AppError } from '../utils/app-error.js';
@@ -51,6 +51,17 @@ import type {
 } from '../validators/equipo.validator.js';
 
 const EMPRESA_ID_DEFAULT = 1;
+
+/**
+ * Usuario "sistema" de Better Auth usado como fallback de responsable/
+ * registrador cuando no hay sesión real (o el caller no la resuelve) — Fase
+ * 6 (2026-08-22). Reemplaza el literal `'1'` que antes apuntaba a la tabla
+ * local `usuarios` (eliminada); ahora las FKs van a `user` (Better Auth), así
+ * que el fallback tiene que ser un id real de esa tabla. Los seeds
+ * (`seed_demo_equipos.ts`, `seed_qa_equipos.ts`) siembran este mismo usuario
+ * con este id fijo antes de insertar equipos — ver `assertUserExists`.
+ */
+export const SISTEMA_USER_ID = 'seed-sistema-eventech';
 
 // ─── Fase 3: cálculo de estados (nada de esto se persiste, salvo dado_de_baja) ──
 
@@ -222,14 +233,11 @@ async function assertUnidadExists(id: number): Promise<void> {
     .limit(1);
   if (!row) throw new AppError(`Unidad de medida con id ${id} no encontrada.`, 404);
 }
-// Fase 2 (2026-08-06): id es text (usuario.id ya no es serial — ver
-// equipo.schema.ts).
-async function assertUsuarioExists(id: string): Promise<void> {
-  const [row] = await db
-    .select({ id: usuario.id })
-    .from(usuario)
-    .where(eq(usuario.id, id))
-    .limit(1);
+// Fase 6 (2026-08-22): repuntado a `user` (Better Auth) — antes consultaba
+// la tabla local `usuarios` (eliminada), que nunca tenía los ids reales de
+// sesión y causaba 404 al crear equipos con un usuario real logueado.
+async function assertUserExists(id: string): Promise<void> {
+  const [row] = await db.select({ id: user.id }).from(user).where(eq(user.id, id)).limit(1);
   if (!row)
     throw new AppError(`Usuario (responsable/registrador) con id ${id} no encontrado.`, 404);
 }
@@ -391,18 +399,18 @@ export async function createEquipo(input: CreateEquipoInput, fallbackUserId?: st
   // Medición ahora tienen cada uno su propio selector de unidad.
   if (input.unidadPrecisionId != null) await assertUnidadExists(input.unidadPrecisionId);
   if (input.unidadRangoId != null) await assertUnidadExists(input.unidadRangoId);
-  if (input.responsableId != null) await assertUsuarioExists(input.responsableId);
+  if (input.responsableId != null) await assertUserExists(input.responsableId);
 
-  const registradoPorCalibracionId = input.calibracionInicial ? (fallbackUserId ?? '1') : undefined;
+  const registradoPorCalibracionId = input.calibracionInicial ? (fallbackUserId ?? SISTEMA_USER_ID) : undefined;
   const responsableVerificacionId = input.verificacionInicial
-    ? input.verificacionInicial.responsableId || fallbackUserId || '1'
+    ? input.verificacionInicial.responsableId || fallbackUserId || SISTEMA_USER_ID
     : undefined;
   const responsableMantenimientoId = input.mantenimientoInicial
-    ? input.mantenimientoInicial.responsableId || fallbackUserId || '1'
+    ? input.mantenimientoInicial.responsableId || fallbackUserId || SISTEMA_USER_ID
     : undefined;
-  if (registradoPorCalibracionId) await assertUsuarioExists(registradoPorCalibracionId);
-  if (responsableVerificacionId) await assertUsuarioExists(responsableVerificacionId);
-  if (responsableMantenimientoId) await assertUsuarioExists(responsableMantenimientoId);
+  if (registradoPorCalibracionId) await assertUserExists(registradoPorCalibracionId);
+  if (responsableVerificacionId) await assertUserExists(responsableVerificacionId);
+  if (responsableMantenimientoId) await assertUserExists(responsableMantenimientoId);
 
   const result = await db.transaction(async (tx) => {
     const [tipo] = await tx
@@ -835,7 +843,7 @@ export async function updateEquipo(id: number, input: UpdateEquipoInput) {
   await assertUbicacionExists(input.ubicacionId);
   if (input.unidadPrecisionId != null) await assertUnidadExists(input.unidadPrecisionId);
   if (input.unidadRangoId != null) await assertUnidadExists(input.unidadRangoId);
-  if (input.responsableId != null) await assertUsuarioExists(input.responsableId);
+  if (input.responsableId != null) await assertUserExists(input.responsableId);
 
   const [updated] = await db
     .update(equipo)
@@ -927,9 +935,9 @@ export async function createCalibracion(
 
   // Fase 2 (2026-08-06): registradoPorId/responsableId son text (nanoid de
   // Better Auth a futuro) — ya no se castea con Number().
-  const registradoPorId = input.registradoPorId || fallbackUserId || '1';
+  const registradoPorId = input.registradoPorId || fallbackUserId || SISTEMA_USER_ID;
 
-  await assertUsuarioExists(registradoPorId);
+  await assertUserExists(registradoPorId);
 
   const proxima = new Date(input.fechaCalibracion);
   proxima.setMonth(proxima.getMonth() + e.frecuenciaCalibracionMeses);
@@ -1038,9 +1046,9 @@ export async function createVerificacion(
     throw new AppError('El equipo no tiene frecuencia de verificación configurada.', 400);
   }
 
-  const responsableId = input.responsableId || fallbackUserId || '1';
+  const responsableId = input.responsableId || fallbackUserId || SISTEMA_USER_ID;
 
-  await assertUsuarioExists(responsableId);
+  await assertUserExists(responsableId);
 
   const proxima = new Date(input.fechaVerificacion);
   proxima.setMonth(proxima.getMonth() + e.frecuenciaVerificacionMeses);
@@ -1150,9 +1158,9 @@ export async function createMantenimiento(
     throw new AppError('El equipo no tiene frecuencia de mantenimiento configurada.', 400);
   }
 
-  const responsableId = input.responsableId || fallbackUserId || '1';
+  const responsableId = input.responsableId || fallbackUserId || SISTEMA_USER_ID;
 
-  await assertUsuarioExists(responsableId);
+  await assertUserExists(responsableId);
 
   const proximo = new Date(input.fechaMantenimiento);
   proximo.setMonth(proximo.getMonth() + e.frecuenciaMantenimientoMeses);
@@ -1502,9 +1510,9 @@ export async function getFichaControlData(id: number): Promise<FichaControlData>
     ]),
   ];
   const users = userIds.length
-    ? await db.select().from(usuario).where(inArray(usuario.id, userIds))
+    ? await db.select().from(user).where(inArray(user.id, userIds))
     : [];
-  const userMap = new Map(users.map((u) => [u.id, u.nombre]));
+  const userMap = new Map(users.map((u) => [u.id, u.name]));
 
   const latestCal = calibraciones[0];
   const latestVer = verificaciones[0];

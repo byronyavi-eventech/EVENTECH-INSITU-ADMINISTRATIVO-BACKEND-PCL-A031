@@ -23,6 +23,7 @@ import {
   tipoMantenimientoEnum,
 } from './enums.js';
 import { tipoEnsayo } from './catalog.schema.js';
+import { user } from './auth.schema.js';
 
 // ─── Catálogos ────────────────────────────────────────────────
 
@@ -147,26 +148,15 @@ export const procedimientoEquipo = pgTable(
   (t) => [unique('procedimientos_codigo_unique').on(t.codigo)],
 );
 
-/**
- * Usuarios locales del módulo de Equipos. NO se toca en el plan de alineación
- * arquitectónica (Bloque 0/2) — tabla creada por init.sql, y `id` (integer)
- * está pendiente de decisión de equipo sobre migrar a `text` para Better Auth
- * real. No se repuntan las FKs a `user` (Better Auth) todavía.
- */
-export const usuario = pgTable('usuarios', {
-  // Fase 2 del cierre (2026-08-06): TEXT, no SERIAL — el identificador
-  // canónico de usuario en Eventech es user.id de Better Auth (nanoid, text).
-  // Esta tabla sigue siendo el catálogo local de responsables/registradores,
-  // solo cambia el tipo de su PK para poder alojar esos ids reales el día
-  // que lleguen.
-  id: text('id').primaryKey(),
-  nombre: varchar('nombre', { length: 150 }).notNull(),
-  email: varchar('email', { length: 150 }).unique(),
-  rol: varchar('rol', { length: 50 }),
-  activo: boolean('activo').default(true),
-});
-
 // ─── Tabla maestra: equipos ────────────────────────────────────
+// Fase 6 (2026-08-22): la tabla local `usuarios` (arriba, ahora eliminada)
+// se sacó del medio — era un segundo catálogo de personas en paralelo al
+// `user` real de Better Auth, y causaba 404 al guardar equipos porque el
+// id de sesión real (nanoid de Better Auth) nunca existía en esa tabla
+// local. Las 4 FKs de responsable/registrador de este archivo ahora
+// apuntan directo a `user.id` (Better Auth) — ver comentario Fase 2
+// original que ya documentaba esta intención (`user.id` como "identificador
+// canónico de usuario en Eventech") pero nunca se ejecutó.
 
 /**
  * Tabla maestra de equipos de laboratorio. `estado` deja de ser editable
@@ -200,8 +190,9 @@ export const equipo = pgTable(
 
     estado: estadoEquipoEnum('estado').notNull().default('activo'),
 
-    // TEXT desde Fase 2 (2026-08-06) — ver comentario en `usuario` más arriba.
-    responsableId: text('responsable_id').references(() => usuario.id, { onDelete: 'set null' }),
+    // TEXT desde Fase 2 (2026-08-06) — Fase 6 (2026-08-22): FK repunteada a
+    // `user.id` (Better Auth) en vez de la tabla local `usuarios` (eliminada).
+    responsableId: text('responsable_id').references(() => user.id, { onDelete: 'set null' }),
 
     fechaAdquisicion: date('fecha_adquisicion'),
     fechaBaja: date('fecha_baja'),
@@ -309,9 +300,10 @@ export const historialCalibracion = pgTable(
     // Calculado = proximaCalibracion - equipo.diasAvisoCalibracion. Nullable porque
     // los registros previos a Fase 3 no tienen diasAvisoCalibracion configurado.
     fechaAviso: date('fecha_aviso'),
+    // Fase 6 (2026-08-22): FK repunteada a `user.id` (Better Auth), ver nota arriba.
     registradoPorId: text('registrado_por_id')
       .notNull()
-      .references(() => usuario.id, { onDelete: 'restrict' }),
+      .references(() => user.id, { onDelete: 'restrict' }),
     observaciones: text('observaciones'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -333,9 +325,10 @@ export const historialVerificacion = pgTable(
       .references(() => equipo.id, { onDelete: 'cascade' }),
     fechaVerificacion: date('fecha_verificacion').notNull(),
     proximaVerificacion: date('proxima_verificacion').notNull(),
+    // Fase 6 (2026-08-22): FK repunteada a `user.id` (Better Auth), ver nota arriba.
     responsableId: text('responsable_id')
       .notNull()
-      .references(() => usuario.id, { onDelete: 'restrict' }),
+      .references(() => user.id, { onDelete: 'restrict' }),
     metodo: varchar('metodo', { length: 150 }),
     // UAT post-demo (2026-08-07): mismo criterio que historialCalibracion.procedimiento arriba.
     procedimiento: text('procedimiento'),
@@ -380,9 +373,10 @@ export const historialMantenimiento = pgTable(
     // Informativo por ahora (no participa del cálculo de estado de Mantenimiento,
     // decisión 2026-08-04) — calculado = proximoMantenimiento - equipo.diasAvisoMantenimiento.
     fechaAviso: date('fecha_aviso'),
+    // Fase 6 (2026-08-22): FK repunteada a `user.id` (Better Auth), ver nota arriba.
     responsableId: text('responsable_id')
       .notNull()
-      .references(() => usuario.id, { onDelete: 'restrict' }),
+      .references(() => user.id, { onDelete: 'restrict' }),
     documentoUrl: varchar('documento_url', { length: 500 }),
     observaciones: text('observaciones'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -431,5 +425,3 @@ export type HistorialMantenimiento = typeof historialMantenimiento.$inferSelect;
 export type NuevoMantenimiento = typeof historialMantenimiento.$inferInsert;
 export type UnidadMedida = typeof unidadMedida.$inferSelect;
 export type NewUnidadMedida = typeof unidadMedida.$inferInsert;
-export type Usuario = typeof usuario.$inferSelect;
-export type NuevoUsuario = typeof usuario.$inferInsert;

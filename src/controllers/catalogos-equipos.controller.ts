@@ -14,7 +14,7 @@ import {
   laboratorioCalibrador,
   procedimientoEquipo,
   unidadMedida,
-  usuario,
+  user,
 } from '../db/schema/index.js';
 import { asc, eq } from 'drizzle-orm';
 import { parseNumericParam } from '../utils/parse-numeric-param.js';
@@ -127,12 +127,19 @@ export const listProcedimientosHandler = wrap(async (_req: Request, res: Respons
   res.status(200).json({ status: 'success', data: rows });
 });
 
-/** GET /api/catalogos/usuarios — responsables/registradores (Paso 0, ver equipo.validator.ts). */
+/**
+ * GET /api/catalogos/usuarios — responsables/registradores (Paso 0, ver
+ * equipo.validator.ts). Fase 6 (2026-08-22): consulta `user` de Better Auth
+ * (cuentas reales) en vez de la tabla local `usuarios` (eliminada) — ver
+ * equipo.schema.ts. `user` no tiene columna `rol` ni `activo` (eso vive en
+ * `rol`/`usuario_rol` de RBAC, no en el usuario mismo); se mantiene la forma
+ * de respuesta { id, nombre, email, rol } que ya consume el frontend, con
+ * `rol: null` — nadie lo lee hoy en el selector de responsable.
+ */
 export const listUsuariosHandler = wrap(async (_req: Request, res: Response) => {
   const rows = await db
-    .select({ id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol })
-    .from(usuario)
-    .where(eq(usuario.activo, true))
-    .orderBy(asc(usuario.nombre));
-  res.status(200).json({ status: 'success', data: rows });
+    .select({ id: user.id, nombre: user.name, email: user.email })
+    .from(user)
+    .orderBy(asc(user.name));
+  res.status(200).json({ status: 'success', data: rows.map((r) => ({ ...r, rol: null })) });
 });

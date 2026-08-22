@@ -48,12 +48,15 @@ import {
   historialCalibracion,
   historialVerificacion,
   historialMantenimiento,
-  usuario,
+  user,
 } from '../schema/index.js';
 import { tipoEnsayo } from '../schema/catalog.schema.js';
 import { logger } from '../../utils/logger.js';
+import { SISTEMA_USER_ID } from '../../services/equipo.service.js';
 
-const STUB_USER_ID = '1'; // mismo placeholder que seed_demo_equipos.ts / getUserId() fallback.
+// Fase 6 (2026-08-22): mismo usuario sistema (Better Auth real) que siembra
+// seed_demo_equipos.ts / usa getUserId() como fallback — ver equipo.service.ts.
+const STUB_USER_ID = SISTEMA_USER_ID;
 
 function dateOffset(days: number): string {
   const d = new Date();
@@ -151,8 +154,15 @@ async function main() {
   logger.info('🌱 Sembrando equipos de prueba QA (QA-01..QA-07)...');
 
   await db
-    .insert(usuario)
-    .values({ id: STUB_USER_ID, nombre: 'Usuario Sistema (temporal)', rol: 'sistema' })
+    .insert(user)
+    .values({
+      id: STUB_USER_ID,
+      name: 'Usuario Sistema (Seed)',
+      email: 'sistema@eventech.local',
+      emailVerified: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
     .onConflictDoNothing();
 
   const [emp] = await db.select().from(empresa).where(eq(empresa.nombre, 'Laboratorio INSITU'));

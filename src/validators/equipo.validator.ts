@@ -13,8 +13,8 @@ export const createEquipoSchema = z
     numeroSerie: z.string().max(100).optional(),
     sucursalId: z.number({ message: 'sucursalId es requerido' }).int().positive(),
     ubicacionId: z.number({ message: 'ubicacionId es requerido' }).int().positive(),
-    // Fase 2 (2026-08-06): text, no integer — usuario.id apunta a futuro a
-    // user.id de Better Auth (nanoid). Ver equipo.schema.ts.
+    // Fase 2 (2026-08-06): text, no integer. Fase 6 (2026-08-22): la FK ya
+    // apunta directo a user.id de Better Auth (nanoid). Ver equipo.schema.ts.
     responsableId: z.string().min(1).optional(),
     fechaAdquisicion: z.string().date().optional(),
     // Fase 4 (2026-08-07): si se envía con valor al crear, equipo.service.ts

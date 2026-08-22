@@ -9,6 +9,9 @@ vi.mock('../services/equipo.service.js', () => ({
   createEquipo: vi.fn(),
   updateEquipo: vi.fn(),
   deactivateEquipo: vi.fn(),
+  // Fase 6 (2026-08-22): getUserId() (equipo.controller.ts) cae acá cuando no
+  // hay sesión — el mock necesita exportarla igual que el módulo real.
+  SISTEMA_USER_ID: 'seed-sistema-eventech',
 }));
 
 import * as equipoService from '../services/equipo.service.js';

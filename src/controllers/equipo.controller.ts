@@ -19,15 +19,18 @@ import { parseNumericParam } from '../utils/parse-numeric-param.js';
 import { wrap, assertValid } from '../utils/controller-helpers.js';
 import { generateFichaControlPdf } from '../pdf/generateFichaControl.js';
 
-// Fase 2 (2026-08-06): usuario.id es text (nanoid de Better Auth a futuro),
-// ya no se castea con Number(). El stub de auth.middleware.ts devuelve el
-// literal 'stub-user-id' cuando no viene header x-debug-user-id — no es un
-// id real de la tabla usuarios, así que se resuelve al mismo fallback fijo
-// que usaba el esquema anterior (usuario '1', sembrado en init.sql) en vez
-// de dejarlo pasar y reventar más abajo con 404.
+// Fase 2 (2026-08-06): usuario.id es text (nanoid de Better Auth). El stub de
+// auth.middleware.ts devuelve el literal 'stub-user-id' cuando no viene
+// header x-debug-user-id — no es un id real de `user`, así que se resuelve
+// al fallback fijo en vez de dejarlo pasar y reventar más abajo con 404.
+// Fase 6 (2026-08-22): el fallback ahora es SISTEMA_USER_ID (usuario real
+// sembrado en `user` de Better Auth) — el literal '1' apuntaba a la tabla
+// local `usuarios`, eliminada en este mismo cambio.
 function getUserId(res: Response): string {
   const val = res.locals.session?.user?.id;
-  return typeof val === 'string' && val && val !== 'stub-user-id' ? val : '1';
+  return typeof val === 'string' && val && val !== 'stub-user-id'
+    ? val
+    : equipoService.SISTEMA_USER_ID;
 }
 
 export const listEquiposHandler = wrap(async (req, res) => {

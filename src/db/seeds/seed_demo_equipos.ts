@@ -38,15 +38,17 @@ import {
   historialCalibracion,
   historialVerificacion,
   historialMantenimiento,
-  usuario,
+  user,
 } from '../schema/index.js';
 import { logger } from '../../utils/logger.js';
+import { SISTEMA_USER_ID } from '../../services/equipo.service.js';
 
-// Mismo id que el fallback hardcodeado de getUserId() (equipo.controller.ts)
-// y DEBUG_USER_ID (frontend lib/config.ts) — no es un usuario real, es el
-// placeholder temporal mientras no se conecta Better Auth (ver usuarios.id
-// en la DB tras la limpieza pre-GitHub, 2026-08-07).
-const STUB_USER_ID = '1';
+// Fase 6 (2026-08-22): antes sembraba un placeholder en la tabla local
+// `usuarios` (eliminada) — ahora siembra un usuario real de Better Auth
+// (`user`), mismo id fijo que usa el fallback de getUserId()
+// (equipo.controller.ts) y de los demás seeds, para no depender de que
+// exista la cuenta personal de nadie.
+const STUB_USER_ID = SISTEMA_USER_ID;
 
 const DIAS_AVISO_DEMO = 30;
 
@@ -87,11 +89,18 @@ async function requireByName<T extends { nombre: string }>(
 async function main() {
   logger.info('🌱 Iniciando seed de equipos de demo (asume catálogo ya sembrado)...');
 
-  // Usuario placeholder — no sobreescribe si ya existe (onConflictDoNothing),
+  // Usuario sistema — no sobreescribe si ya existe (onConflictDoNothing),
   // solo garantiza que exista algo válido para las FKs de responsable.
   await db
-    .insert(usuario)
-    .values({ id: STUB_USER_ID, nombre: 'Usuario Sistema (temporal)', rol: 'sistema' })
+    .insert(user)
+    .values({
+      id: STUB_USER_ID,
+      name: 'Usuario Sistema (Seed)',
+      email: 'sistema@eventech.local',
+      emailVerified: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
     .onConflictDoNothing();
 
   const [emp] = await db.select().from(empresa).where(eq(empresa.nombre, 'Laboratorio INSITU'));
