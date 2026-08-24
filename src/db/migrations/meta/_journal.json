@@ -92,6 +92,13 @@
       "when": 1787366820048,
       "tag": "0012_motionless_jubilee",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787606000000,
+      "tag": "0013_equipos_codigo_seq",
+      "breakpoints": true
     }
   ]
 }
