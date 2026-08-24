@@ -97,6 +97,14 @@ export const obra = pgTable(
     ciudad: varchar('ciudad', { length: 100 }).notNull(),
     duracionMeses: integer('duracion_meses').notNull(),
 
+    // Horas mínimas de anticipación requeridas entre "ahora" y la fecha/hora
+    // programada de una visita a esta obra (validación de traslado, flujo de
+    // Programación de Ensayos). Nullable sin default: NULL = obra sin
+    // configurar todavía — la validación de traslado la trata como "sin
+    // restricción" (mismo efecto práctico que 0), pero queda auditable
+    // distinguir "no configurada" de "verificada en cero".
+    tiempoTrasladoHoras: integer('tiempo_traslado_horas'),
+
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

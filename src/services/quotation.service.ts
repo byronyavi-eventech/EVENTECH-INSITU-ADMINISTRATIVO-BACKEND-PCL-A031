@@ -12,6 +12,9 @@ import {
   subareaEnsayo,
   areaEnsayo,
   precioEnsayo,
+  visita,
+  ordenTrabajo,
+  visitaEnsayo,
 } from '../db/schema/index.js';
 import { eq, and, ilike, isNull, or, count, sql, SQL, desc, inArray } from 'drizzle-orm';
 import { AppError } from '../utils/app-error.js';
@@ -21,6 +24,7 @@ import {
   sendNuevaNotificationEmail,
   sendEnviadaFirmaNotificationEmail,
 } from './email.service.js';
+import { verifyQuotationToken } from './token.service.js';
 
 export interface EnsayoLineInput {
   area: string;
@@ -52,6 +56,10 @@ export interface SubmitWebQuotationInput {
   correoEncargado: string;
   telefonoEncargado: string;
   ensayos: EnsayoLineInput[];
+  // Cantidad de visitas a terreno para TODA la cotización (1-5, default 1).
+  // Ver visitasTotales en quotation.schema.ts — reemplaza el viejo patrón de
+  // "visitas" por ensayo individual como fuente de verdad para scheduling.
+  visitasTotales?: number;
 }
 
 export interface SubmitWebQuotationResult {
@@ -629,6 +637,441 @@ export async function getCotizacionById(
   };
 }
 
+// ─── Programación de Ensayos — datos por token (Fase 3) ───────────────────────
+// Query propia y liviana (no reutiliza QuotationListItem/getCotizacionById)
+// para no forzar visitasTotales/tiempoTrasladoHoras sobre los demás
+// consumidores de ese tipo compartido (PDF, emails, listado admin).
+
+export interface ProgramacionData {
+  id: number;
+  codigoCotizacion: string | null;
+  estado: EstadoCotizacion;
+  visitasTotales: number;
+  obra: {
+    nombreObra: string;
+    nombreContratista: string;
+    ubicacionObra: string;
+    tiempoTrasladoHoras: number | null;
+  };
+  cliente: {
+    giroEmpresa: string;
+    nombreContacto: string;
+    email: string;
+  };
+  detalles: Array<{
+    id: number;
+    nombreTipoEnsayo: string;
+    nombreArea: string;
+    nombreSubarea: string;
+    cantidadEnsayos: number;
+  }>;
+}
+
+/**
+ * Verifica el token (accion 'PROGRAMAR') y devuelve los datos necesarios para
+ * el portal /programar-ensayos del cliente. Rechaza si la cotización no está
+ * en PENDIENTE_PROGRAMACION (evita reprogramar una ya PROGRAMADA, o usar un
+ * token de una cotización en otro estado).
+ */
+export async function getProgramacionDataByToken(token: string): Promise<ProgramacionData> {
+  let payload: Awaited<ReturnType<typeof verifyQuotationToken>>;
+  try {
+    payload = await verifyQuotationToken(token);
+  } catch (err) {
+    throw new AppError((err as Error).message, 401);
+  }
+  if (payload.accion !== 'PROGRAMAR') {
+    throw new AppError('Token inválido para esta operación.', 401);
+  }
+
+  const [row] = await db
+    .select({
+      id: cotizacion.id,
+      codigoCotizacion: cotizacion.codigoCotizacion,
+      estado: cotizacion.estado,
+      visitasTotales: cotizacion.visitasTotales,
+      nombreObra: obra.nombreObra,
+      nombreContratista: obra.nombreContratista,
+      ubicacionObra: obra.ubicacionObra,
+      tiempoTrasladoHoras: obra.tiempoTrasladoHoras,
+      giroEmpresa: cliente.giroEmpresa,
+      nombreContacto: cliente.nombreContacto,
+      email: cliente.email,
+    })
+    .from(cotizacion)
+    .innerJoin(obra, eq(cotizacion.obraId, obra.id))
+    .innerJoin(cliente, eq(obra.clienteId, cliente.id))
+    .where(and(eq(cotizacion.id, payload.cotizacionId), isNull(cotizacion.deletedAt)))
+    .limit(1);
+
+  if (!row) throw new AppError(`Cotización ${payload.cotizacionId} no encontrada.`, 404);
+
+  if (row.estado !== 'PENDIENTE_PROGRAMACION') {
+    throw new AppError(
+      `Esta cotización no está pendiente de programación (estado actual: ${row.estado}).`,
+      422,
+    );
+  }
+
+  const detalleRows = await db
+    .select({
+      id: cotizacionDetalle.id,
+      nombreTipoEnsayo: tipoEnsayo.nombreTipoEnsayo,
+      nombreArea: areaEnsayo.nombreArea,
+      nombreSubarea: subareaEnsayo.nombreSubarea,
+      cantidadEnsayos: cotizacionDetalle.cantidadEnsayos,
+    })
+    .from(cotizacionDetalle)
+    .innerJoin(tipoEnsayo, eq(cotizacionDetalle.tipoEnsayoId, tipoEnsayo.id))
+    .innerJoin(subareaEnsayo, eq(tipoEnsayo.subareaId, subareaEnsayo.id))
+    .innerJoin(areaEnsayo, eq(subareaEnsayo.areaId, areaEnsayo.id))
+    .where(eq(cotizacionDetalle.cotizacionId, row.id));
+
+  return {
+    id: row.id,
+    codigoCotizacion: row.codigoCotizacion,
+    estado: row.estado,
+    visitasTotales: row.visitasTotales,
+    obra: {
+      nombreObra: row.nombreObra,
+      nombreContratista: row.nombreContratista,
+      ubicacionObra: row.ubicacionObra,
+      tiempoTrasladoHoras: row.tiempoTrasladoHoras,
+    },
+    cliente: {
+      giroEmpresa: row.giroEmpresa,
+      nombreContacto: row.nombreContacto,
+      email: row.email,
+    },
+    detalles: detalleRows,
+  };
+}
+
+// ─── Agendamientos — vista central de todas las visitas programadas (admin) ──
+// Lista TODAS las visitas de TODAS las cotizaciones (no una a la vez —
+// reemplaza el detalle por-cotización de la iteración anterior, a pedido de
+// Byron). Mismo patrón de paginación que listQuotations. Protegido
+// (requireAuth) — no usa token de cliente.
+
+export interface AgendamientoItem {
+  visitaId: number;
+  numeroVisita: number;
+  fechaHoraProgramada: string;
+  codigoOt: string;
+  cotizacionId: number;
+  codigoCotizacion: string | null;
+  nombreObra: string;
+  nombreContacto: string;
+  ensayos: Array<{ id: number; nombreTipoEnsayo: string }>;
+}
+
+export interface ListAgendamientosInput {
+  q?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface ListAgendamientosResult {
+  data: AgendamientoItem[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+}
+
+export async function listAgendamientos(
+  input: ListAgendamientosInput,
+): Promise<ListAgendamientosResult> {
+  const { q, page = 1, limit = 20 } = input;
+  const offset = (page - 1) * limit;
+
+  const whereClause = q
+    ? or(
+        ilike(cotizacion.codigoCotizacion, `%${q}%`),
+        ilike(obra.nombreObra, `%${q}%`),
+      )
+    : undefined;
+
+  const rows = await db
+    .select({
+      visitaId: visita.id,
+      numeroVisita: visita.numeroVisita,
+      fechaHoraProgramada: visita.fechaHoraProgramada,
+      codigoOt: ordenTrabajo.codigoOt,
+      cotizacionId: cotizacion.id,
+      codigoCotizacion: cotizacion.codigoCotizacion,
+      nombreObra: obra.nombreObra,
+      nombreContacto: cliente.nombreContacto,
+    })
+    .from(visita)
+    .innerJoin(ordenTrabajo, eq(ordenTrabajo.visitaId, visita.id))
+    .innerJoin(cotizacion, eq(visita.cotizacionId, cotizacion.id))
+    .innerJoin(obra, eq(cotizacion.obraId, obra.id))
+    .innerJoin(cliente, eq(obra.clienteId, cliente.id))
+    .where(whereClause)
+    .orderBy(visita.fechaHoraProgramada)
+    .limit(limit)
+    .offset(offset);
+
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(visita)
+    .innerJoin(cotizacion, eq(visita.cotizacionId, cotizacion.id))
+    .innerJoin(obra, eq(cotizacion.obraId, obra.id))
+    .where(whereClause);
+
+  if (rows.length === 0) {
+    return { data: [], pagination: { page, limit, total: 0, totalPages: 0 } };
+  }
+
+  const ensayoRows = await db
+    .select({
+      visitaId: visitaEnsayo.visitaId,
+      id: cotizacionDetalle.id,
+      nombreTipoEnsayo: tipoEnsayo.nombreTipoEnsayo,
+    })
+    .from(visitaEnsayo)
+    .innerJoin(cotizacionDetalle, eq(visitaEnsayo.cotizacionDetalleId, cotizacionDetalle.id))
+    .innerJoin(tipoEnsayo, eq(cotizacionDetalle.tipoEnsayoId, tipoEnsayo.id))
+    .where(inArray(visitaEnsayo.visitaId, rows.map((r) => r.visitaId)));
+
+  const ensayosPorVisita = new Map<number, Array<{ id: number; nombreTipoEnsayo: string }>>();
+  for (const e of ensayoRows) {
+    const arr = ensayosPorVisita.get(e.visitaId) ?? [];
+    arr.push({ id: e.id, nombreTipoEnsayo: e.nombreTipoEnsayo });
+    ensayosPorVisita.set(e.visitaId, arr);
+  }
+
+  return {
+    data: rows.map((r) => ({
+      visitaId: r.visitaId,
+      numeroVisita: r.numeroVisita,
+      fechaHoraProgramada: r.fechaHoraProgramada.toISOString(),
+      codigoOt: r.codigoOt,
+      cotizacionId: r.cotizacionId,
+      codigoCotizacion: r.codigoCotizacion,
+      nombreObra: r.nombreObra,
+      nombreContacto: r.nombreContacto,
+      ensayos: ensayosPorVisita.get(r.visitaId) ?? [],
+    })),
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  };
+}
+
+// ─── Programación de Ensayos — confirmar (Fase 4, cierre del flujo) ───────────
+
+export interface ConfirmarProgramacionVisitaInput {
+  numeroVisita: number;
+  fechaHoraProgramada: string; // ISO 8601
+  detalleIds: number[];
+}
+
+export interface ConfirmarProgramacionInput {
+  token: string;
+  visitas: ConfirmarProgramacionVisitaInput[];
+}
+
+export interface OrdenTrabajoGenerada {
+  codigoOt: string;
+  numeroVisita: number;
+  fechaHoraProgramada: string;
+  ensayos: Array<{ id: number; nombreTipoEnsayo: string }>;
+}
+
+export interface ConfirmarProgramacionResult {
+  id: number;
+  estado: EstadoCotizacion;
+  ordenesTrabajo: OrdenTrabajoGenerada[];
+}
+
+/**
+ * Confirma la programación de visitas de una cotización: persiste las
+ * visitas (fecha/hora), la asignación de cada ensayo a su visita, cambia el
+ * estado a PROGRAMADO y genera 1 Orden de Trabajo por visita (cardinalidad
+ * 1 visita = 1 OT, confirmada por Noelia — ver visita.schema.ts).
+ *
+ * Replica en servidor las mismas validaciones de traslado y coherencia
+ * cronológica del cliente (Fase 3) — el servidor es la fuente de verdad.
+ *
+ * Límite de alcance explícito: esto es el cierre del flujo. No dispara
+ * ningún proceso posterior a la creación de la OT (asignación de técnico,
+ * ejecución, etc.).
+ */
+export async function confirmarProgramacion(
+  input: ConfirmarProgramacionInput,
+  expectedId: number,
+): Promise<ConfirmarProgramacionResult> {
+  let payload: Awaited<ReturnType<typeof verifyQuotationToken>>;
+  try {
+    payload = await verifyQuotationToken(input.token);
+  } catch (err) {
+    throw new AppError((err as Error).message, 401);
+  }
+  if (payload.accion !== 'PROGRAMAR') {
+    throw new AppError('Token inválido para esta operación.', 401);
+  }
+  if (payload.cotizacionId !== expectedId) {
+    throw new AppError('El token no corresponde a esta cotización.', 401);
+  }
+  const cotizacionId = payload.cotizacionId;
+
+  logger.info({ cotizacionId }, 'quotation.service: confirmarProgramacion start');
+
+  const [cotRow] = await db
+    .select({
+      id: cotizacion.id,
+      codigoCotizacion: cotizacion.codigoCotizacion,
+      estado: cotizacion.estado,
+      visitasTotales: cotizacion.visitasTotales,
+      tiempoTrasladoHoras: obra.tiempoTrasladoHoras,
+    })
+    .from(cotizacion)
+    .innerJoin(obra, eq(cotizacion.obraId, obra.id))
+    .where(and(eq(cotizacion.id, cotizacionId), isNull(cotizacion.deletedAt)))
+    .limit(1);
+
+  if (!cotRow) throw new AppError(`Cotización ${cotizacionId} no encontrada.`, 404);
+
+  if (cotRow.estado !== 'PENDIENTE_PROGRAMACION') {
+    throw new AppError(
+      `Esta cotización no está pendiente de programación (estado actual: ${cotRow.estado}).`,
+      422,
+    );
+  }
+
+  // ── Validación de estructura: exactamente 1 entrada por número de visita ──
+  const { visitas } = input;
+  if (visitas.length !== cotRow.visitasTotales) {
+    throw new AppError(
+      `Se esperaban ${cotRow.visitasTotales} visita(s), se recibieron ${visitas.length}.`,
+      422,
+    );
+  }
+  const numerosEsperados = new Set(
+    Array.from({ length: cotRow.visitasTotales }, (_, i) => i + 1),
+  );
+  const numerosRecibidos = new Set(visitas.map((v) => v.numeroVisita));
+  if (
+    numerosRecibidos.size !== visitas.length ||
+    ![...numerosEsperados].every((n) => numerosRecibidos.has(n))
+  ) {
+    throw new AppError(
+      `Los números de visita deben ser exactamente 1..${cotRow.visitasTotales}, sin repetir.`,
+      422,
+    );
+  }
+
+  // ── Validación de asignación de ensayos: cobertura total, sin duplicados ──
+  const detalleRows = await db
+    .select({ id: cotizacionDetalle.id })
+    .from(cotizacionDetalle)
+    .where(eq(cotizacionDetalle.cotizacionId, cotizacionId));
+  const detalleIdsEsperados = new Set(detalleRows.map((d) => d.id));
+
+  const detalleIdsRecibidos = visitas.flatMap((v) => v.detalleIds);
+  const detalleIdsRecibidosSet = new Set(detalleIdsRecibidos);
+  if (detalleIdsRecibidos.length !== detalleIdsRecibidosSet.size) {
+    throw new AppError('Un ensayo no puede asignarse a más de una visita.', 422);
+  }
+  if (
+    detalleIdsRecibidosSet.size !== detalleIdsEsperados.size ||
+    ![...detalleIdsEsperados].every((id) => detalleIdsRecibidosSet.has(id))
+  ) {
+    throw new AppError(
+      'Todos los ensayos de la cotización deben quedar asignados a exactamente una visita.',
+      422,
+    );
+  }
+
+  // ── Validación de traslado + coherencia cronológica (server = fuente de verdad) ──
+  const visitasOrdenadas = [...visitas].sort((a, b) => a.numeroVisita - b.numeroVisita);
+  let anterior: Date | null = null;
+  const ahora = Date.now();
+  for (const v of visitasOrdenadas) {
+    const fecha = new Date(v.fechaHoraProgramada);
+    if (Number.isNaN(fecha.getTime())) {
+      throw new AppError(`Fecha inválida en visita ${v.numeroVisita}.`, 422);
+    }
+
+    if (cotRow.tiempoTrasladoHoras != null) {
+      const horasHastaVisita = (fecha.getTime() - ahora) / (1000 * 60 * 60);
+      if (horasHastaVisita < cotRow.tiempoTrasladoHoras) {
+        throw new AppError(
+          `Visita ${v.numeroVisita}: esta obra requiere al menos ` +
+            `${cotRow.tiempoTrasladoHoras}h de anticipación.`,
+          422,
+        );
+      }
+    }
+
+    if (anterior && fecha.getTime() <= anterior.getTime()) {
+      throw new AppError(
+        `Visita ${v.numeroVisita}: debe ser posterior a la visita anterior (coherencia cronológica).`,
+        422,
+      );
+    }
+    anterior = fecha;
+  }
+
+  // ── Persistencia + generación de OTs (atómico) ──────────────────────────
+  const docCode = cotRow.codigoCotizacion ?? `${String(cotRow.id + 9999)}-LIA`;
+
+  const ordenesTrabajo = await db.transaction(async (tx) => {
+    const resultado: OrdenTrabajoGenerada[] = [];
+
+    for (const v of visitasOrdenadas) {
+      const [nuevaVisita] = await tx
+        .insert(visita)
+        .values({
+          cotizacionId,
+          numeroVisita: v.numeroVisita,
+          fechaHoraProgramada: new Date(v.fechaHoraProgramada),
+        })
+        .returning({ id: visita.id });
+
+      if (v.detalleIds.length > 0) {
+        await tx.insert(visitaEnsayo).values(
+          v.detalleIds.map((detalleId) => ({
+            visitaId: nuevaVisita.id,
+            cotizacionDetalleId: detalleId,
+          })),
+        );
+      }
+
+      const codigoOt = `OT-${docCode}-${v.numeroVisita}`;
+      await tx.insert(ordenTrabajo).values({
+        cotizacionId,
+        visitaId: nuevaVisita.id,
+        codigoOt,
+      });
+
+      const ensayosDeEstaVisita = await tx
+        .select({ id: cotizacionDetalle.id, nombreTipoEnsayo: tipoEnsayo.nombreTipoEnsayo })
+        .from(cotizacionDetalle)
+        .innerJoin(tipoEnsayo, eq(cotizacionDetalle.tipoEnsayoId, tipoEnsayo.id))
+        .where(inArray(cotizacionDetalle.id, v.detalleIds));
+
+      resultado.push({
+        codigoOt,
+        numeroVisita: v.numeroVisita,
+        fechaHoraProgramada: v.fechaHoraProgramada,
+        ensayos: ensayosDeEstaVisita,
+      });
+    }
+
+    await tx
+      .update(cotizacion)
+      .set({ estado: 'PROGRAMADO', updatedAt: new Date() })
+      .where(eq(cotizacion.id, cotizacionId));
+
+    return resultado;
+  });
+
+  logger.info(
+    { cotizacionId, otsGeneradas: ordenesTrabajo.map((o) => o.codigoOt) },
+    'quotation.service: confirmarProgramacion OK',
+  );
+
+  return { id: cotizacionId, estado: 'PROGRAMADO', ordenesTrabajo };
+}
+
 // Update estado
 
 export type EstadoCotizacion = (typeof cotizacion.$inferSelect)['estado'];
@@ -654,14 +1097,20 @@ export async function updateEstadoCotizacion(
   //                                       ESPERA_VERIFICACION → PAGO_VERIFICADO
   //                                                           ↘ PAGO_RECHAZADO
   //                                               ↘ RECHAZADA_CLIENTE
+  //
+  //   PAGO_VERIFICADO → PENDIENTE_PROGRAMACION → PROGRAMADO
+  //   (Fase 2: flujo de Programación de Ensayos — ver quotation.controller.ts
+  //   solicitarProgramacionHandler. PROGRAMADO se alcanza en Fase 4.)
   const allowed: Record<string, EstadoCotizacion[]> = {
     NUEVA: ['ENVIADA_FIRMA', 'RECHAZADA', 'ANULADA'],
     ENVIADA_FIRMA: ['FIRMADA', 'RECHAZADA', 'ANULADA'],
     FIRMADA: ['ENVIADA_CLIENTE', 'RECHAZADA', 'ANULADA'],
     ENVIADA_CLIENTE: ['ESPERA_VERIFICACION', 'RECHAZADA_CLIENTE', 'VENCIDA', 'ANULADA'],
     ESPERA_VERIFICACION: ['PAGO_VERIFICADO', 'PAGO_RECHAZADO', 'ANULADA'],
-    PAGO_VERIFICADO: ['ANULADA'],
+    PAGO_VERIFICADO: ['PENDIENTE_PROGRAMACION', 'ANULADA'],
     PAGO_RECHAZADO: ['ESPERA_VERIFICACION', 'ANULADA'],
+    PENDIENTE_PROGRAMACION: ['PROGRAMADO', 'ANULADA'],
+    PROGRAMADO: [],
     RECHAZADA_CLIENTE: ['NUEVA', 'ANULADA'],
     RECHAZADA: ['NUEVA'],
     VENCIDA: ['ANULADA'],
@@ -966,6 +1415,7 @@ export async function submitWebQuotation(
         origen: 'WEB',
         estado: 'NUEVA',
         observaciones: null,
+        visitasTotales: input.visitasTotales ?? 1,
       })
       .returning({ id: cotizacion.id });
 

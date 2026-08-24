@@ -99,6 +99,13 @@
       "when": 1787606000000,
       "tag": "0013_equipos_codigo_seq",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1787610045099,
+      "tag": "0014_fantastic_morlun",
+      "breakpoints": true
     }
   ]
 }
