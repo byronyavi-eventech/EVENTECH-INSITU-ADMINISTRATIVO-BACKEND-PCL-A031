@@ -68,8 +68,33 @@ export const condicionPagoEnum = pgEnum('condicion_pago', [
 /**
  * Tipo de ajuste (descuento o incremento) sobre el total.
  */
-export const tipoAjusteEnum = pgEnum('tipo_ajuste', [
-  'SIN_AJUSTE',
-  'DESCUENTO',
-  'INCREMENTO',
+export const tipoAjusteEnum = pgEnum('tipo_ajuste', ['SIN_AJUSTE', 'DESCUENTO', 'INCREMENTO']);
+
+// ---------------------------------------------------------------------------
+// Dominio de Equipos (Mantenedores/Laboratorio)
+// ---------------------------------------------------------------------------
+
+export const estadoEquipoEnum = pgEnum('estado_equipo', [
+  'activo',
+  'inactivo',
+  'en_mantenimiento',
+  'en_calibracion',
+  'dado_de_baja',
 ]);
+
+// "Estado de ingreso" manual para Calibración y Verificación — no confundir
+// con el "estado calculado" (vigente/vencida/proxima_a_vencer/en_calibracion/...)
+// que se deriva en equipo.service.ts, nunca se persiste.
+export const estadoIngresoCalVerEnum = pgEnum('estado_ingreso_cal_ver', ['aprobado', 'en_proceso']);
+
+// "Estado de ingreso" manual para Mantenimiento. A diferencia de Calibración/
+// Verificación, el "estado calculado" de Mantenimiento ES este mismo valor
+// (no hay lógica de fechas) — ver equipo.service.ts.
+export const estadoIngresoMantenimientoEnum = pgEnum('estado_ingreso_mantenimiento', [
+  'operativo',
+  'en_mantenimiento',
+  'dado_de_baja',
+  'fuera_de_servicio',
+]);
+
+export const tipoMantenimientoEnum = pgEnum('tipo_mantenimiento', ['preventivo', 'correctivo']);
