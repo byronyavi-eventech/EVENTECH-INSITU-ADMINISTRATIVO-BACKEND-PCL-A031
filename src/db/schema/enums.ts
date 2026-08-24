@@ -7,19 +7,21 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
 /**
- * Estado del ciclo de vida de una cotización (11 estados).
+ * Estado del ciclo de vida de una cotización (13 estados).
  *
- * NUEVA                → en edición, no enviada (antes BORRADOR)
- * ENVIADA_FIRMA        → enviada al jefe de laboratorio para firma
- * FIRMADA              → jefe de laboratorio aprobó y firmó
- * ENVIADA_CLIENTE      → PDF + botones enviados al cliente por email
- * RECHAZADA_CLIENTE    → cliente rechazó la cotización via email
- * ESPERA_VERIFICACION  → cliente subió comprobantes de pago, espera revisión admin
- * PAGO_VERIFICADO      → admin confirmó que el pago fue realizado
- * PAGO_RECHAZADO       → admin rechazó los comprobantes (pago no válido)
- * RECHAZADA            → rechazada internamente por el equipo
- * VENCIDA              → plazo de validez expirado sin respuesta del cliente
- * ANULADA              → anulada manualmente por un admin
+ * NUEVA                    → en edición, no enviada (antes BORRADOR)
+ * ENVIADA_FIRMA            → enviada al jefe de laboratorio para firma
+ * FIRMADA                  → jefe de laboratorio aprobó y firmó
+ * ENVIADA_CLIENTE          → PDF + botones enviados al cliente por email
+ * RECHAZADA_CLIENTE        → cliente rechazó la cotización via email
+ * ESPERA_VERIFICACION      → cliente subió comprobantes de pago, espera revisión admin
+ * PAGO_VERIFICADO          → admin confirmó que el pago fue realizado
+ * PAGO_RECHAZADO           → admin rechazó los comprobantes (pago no válido)
+ * PENDIENTE_PROGRAMACION   → admin solicitó al cliente programar visitas/ensayos (token enviado)
+ * PROGRAMADO               → cliente confirmó fecha/hora de visitas; OT(s) generada(s)
+ * RECHAZADA                → rechazada internamente por el equipo
+ * VENCIDA                  → plazo de validez expirado sin respuesta del cliente
+ * ANULADA                  → anulada manualmente por un admin
  *
  * Flujo principal:
  *   NUEVA → ENVIADA_FIRMA → FIRMADA → ENVIADA_CLIENTE
@@ -27,6 +29,8 @@ import { pgEnum } from 'drizzle-orm/pg-core';
  *                                  ESPERA_VERIFICACION → PAGO_VERIFICADO
  *                                                      ↘ PAGO_RECHAZADO
  *                                          ↘ RECHAZADA_CLIENTE (si cliente rechaza)
+ *
+ *   PAGO_VERIFICADO → PENDIENTE_PROGRAMACION → PROGRAMADO
  */
 export const estadoCotizacionEnum = pgEnum('estado_cotizacion', [
   'NUEVA',
@@ -37,6 +41,8 @@ export const estadoCotizacionEnum = pgEnum('estado_cotizacion', [
   'ESPERA_VERIFICACION',
   'PAGO_VERIFICADO',
   'PAGO_RECHAZADO',
+  'PENDIENTE_PROGRAMACION',
+  'PROGRAMADO',
   'RECHAZADA',
   'VENCIDA',
   'ANULADA',

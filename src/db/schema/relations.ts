@@ -14,6 +14,7 @@ import { cliente, obra, encargadoObra } from './client.schema.js';
 import { areaEnsayo, subareaEnsayo, tipoEnsayo, precioEnsayo } from './catalog.schema.js';
 import { cotizacion, cotizacionDetalle, cotizacionServicioGeneral } from './quotation.schema.js';
 import { cuentaBancaria } from './cuenta_bancaria.schema.js';
+import { visita, ordenTrabajo, visitaEnsayo } from './visita.schema.js';
 import {
   empresa,
   sucursal,
@@ -158,6 +159,8 @@ export const cotizacionRelations = relations(cotizacion, ({ one, many }) => ({
   }),
   detalles: many(cotizacionDetalle),
   serviciosGenerales: many(cotizacionServicioGeneral),
+  visitas: many(visita),
+  ordenesTrabajo: many(ordenTrabajo),
 }));
 
 export const cuentaBancariaRelations = relations(cuentaBancaria, ({ many }) => ({
@@ -173,6 +176,48 @@ export const cotizacionDetalleRelations = relations(cotizacionDetalle, ({ one })
   tipoEnsayo: one(tipoEnsayo, {
     fields: [cotizacionDetalle.tipoEnsayoId],
     references: [tipoEnsayo.id],
+  }),
+  visitaAsignada: one(visitaEnsayo, {
+    fields: [cotizacionDetalle.id],
+    references: [visitaEnsayo.cotizacionDetalleId],
+  }),
+}));
+
+// ---------------------------------------------------------------------------
+// Visitas y Órdenes de Trabajo (Programación de Ensayos)
+// ---------------------------------------------------------------------------
+
+export const visitaRelations = relations(visita, ({ one, many }) => ({
+  cotizacion: one(cotizacion, {
+    fields: [visita.cotizacionId],
+    references: [cotizacion.id],
+  }),
+  ordenTrabajo: one(ordenTrabajo, {
+    fields: [visita.id],
+    references: [ordenTrabajo.visitaId],
+  }),
+  ensayosAsignados: many(visitaEnsayo),
+}));
+
+export const ordenTrabajoRelations = relations(ordenTrabajo, ({ one }) => ({
+  cotizacion: one(cotizacion, {
+    fields: [ordenTrabajo.cotizacionId],
+    references: [cotizacion.id],
+  }),
+  visita: one(visita, {
+    fields: [ordenTrabajo.visitaId],
+    references: [visita.id],
+  }),
+}));
+
+export const visitaEnsayoRelations = relations(visitaEnsayo, ({ one }) => ({
+  visita: one(visita, {
+    fields: [visitaEnsayo.visitaId],
+    references: [visita.id],
+  }),
+  cotizacionDetalle: one(cotizacionDetalle, {
+    fields: [visitaEnsayo.cotizacionDetalleId],
+    references: [cotizacionDetalle.id],
   }),
 }));
 

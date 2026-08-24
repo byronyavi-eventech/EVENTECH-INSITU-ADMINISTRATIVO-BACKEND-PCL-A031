@@ -9,6 +9,12 @@ import { generateQuotationToken } from './token.service.js';
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.EMAIL_SENDER ?? 'Insitu <no-reply@laboratorioinsitu.cl>';
 
+// Override de destinatario para pruebas (dev/QA) — si está seteado, TODOS los
+// emails que pasan por sendProgramacionEmail van a esta casilla en vez del
+// email real del cliente. El cuerpo del correo sigue mostrando los datos
+// reales de la cotización. NO usar en producción — dejar vacío/undefined.
+const EMAIL_TEST_OVERRIDE = process.env.EMAIL_TEST_OVERRIDE?.trim() || undefined;
+
 // Mail HTML
 
 function buildEmailHtml(cotizacion: QuotationListItem): string {
@@ -980,5 +986,204 @@ export async function sendEnviadaFirmaNotificationEmail(
   logger.info(
     { cotizacionId: cotizacion.id, recipients },
     'email.service: sendEnviadaFirmaNotificationEmail OK',
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Email al CLIENTE — Solicitud de Programación de Ensayos (Fase 2)
+// ---------------------------------------------------------------------------
+
+function buildProgramacionEmailHtml(
+  cotizacion: QuotationListItem,
+  programarUrl: string,
+): string {
+  const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
+  const totalEnsayos = cotizacion.detalles.reduce((acc, d) => acc + d.cantidadEnsayos, 0);
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Programación de Ensayos ${docCode} — Laboratorio Insitu</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#ffffff;padding:28px 36px;border-bottom:2px solid #c8102e;">
+              <table width="100%">
+                <tr>
+                  <td>
+                    <p style="margin:0;font-size:24px;font-weight:900;color:#c8102e;letter-spacing:1px;">INSITU</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">Laboratorio de Ensayos y Calidad</p>
+                  </td>
+                  <td align="right">
+                    <p style="margin:0;font-size:14px;font-weight:700;color:#111827;">PROGRAMACIÓN DE ENSAYOS</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#c8102e;font-weight:700;">N&deg; ${docCode}</p>
+                    <span style="display:inline-block;margin-top:8px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">PAGO VERIFICADO</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Saludo -->
+          <tr>
+            <td style="padding:28px 36px 0;">
+              <p style="margin:0;font-size:15px;color:#111827;">Estimado/a <strong>${cotizacion.cliente.nombreContacto}</strong>,</p>
+              <p style="margin:10px 0 0;font-size:14px;color:#6b7280;line-height:1.6;">
+                Hemos verificado el pago de su cotización para la obra
+                <strong style="color:#111827;">${cotizacion.obra.nombreObra}</strong>.
+                El siguiente paso es coordinar la fecha y hora de las visitas a terreno para
+                realizar los ensayos contratados.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Datos cliente / obra -->
+          <tr>
+            <td style="padding:24px 36px 0;">
+              <div style="background:#fffbeb;padding:8px 12px;margin-bottom:12px;border-radius:4px;border-left:3px solid #f5a623;">
+                <p style="margin:0;font-size:11px;font-weight:700;color:#c8102e;text-transform:uppercase;letter-spacing:.5px;">Datos Cotizante y Obra</p>
+              </div>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;width:40%;">Empresa / Raz&oacute;n Social</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.cliente.giroEmpresa}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Contacto</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.cliente.nombreContacto}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Obra</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.obra.nombreObra}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Ubicaci&oacute;n</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.obra.ubicacionObra}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Ensayos contratados</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.detalles.length} tipo(s) &middot; ${totalEnsayos} ensayo(s)</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td style="padding:32px 36px;">
+              <p style="margin:0 0 20px;font-size:14px;color:#374151;font-weight:600;text-align:center;">Programe sus visitas y ensayos:</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td align="center" bgcolor="#c8102e" style="border-radius:8px;">
+                          <a href="${programarUrl}"
+                             target="_blank"
+                             style="display:block;background:#c8102e;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;letter-spacing:.3px;mso-padding-alt:14px 40px;">
+                            <!--[if mso]>&nbsp;<![endif]-->
+                            PROGRAMAR VISITAS Y ENSAYOS
+                            <!--[if mso]>&nbsp;<![endif]-->
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;text-align:center;">
+                Este enlace es personal e intransferible. Si no puede hacer clic en el bot&oacute;n,
+                copie y pegue esta direcci&oacute;n en su navegador:<br/>
+                <span style="color:#6b7280;word-break:break-all;">${programarUrl}</span>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Nota legal -->
+          <tr>
+            <td style="padding:0 36px 24px;">
+              <p style="margin:0;font-size:12px;color:#6b7280;line-height:1.6;">
+                Si tiene preguntas, no dude en contactarnos respondiendo este correo o llamando a nuestras oficinas.
+              </p>
+              <p style="margin:12px 0 0;font-size:12px;color:#6b7280;">
+                Atentamente,<br/>
+                <strong style="color:#111827;">Equipo Laboratorio Insitu</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:16px 36px;">
+              <table width="100%">
+                <tr>
+                  <td style="font-size:11px;color:#9ca3af;">&copy; ${new Date().getFullYear()} Laboratorio Insitu &middot; www.laboratorioinsitu.cl</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/**
+ * Envia el email al CLIENTE solicitando programar visitas y ensayos.
+ * Genera un token HMAC-SHA256 (accion 'PROGRAMAR') embebido en la URL del
+ * portal /programar-ensayos del frontend. No adjunta PDF (a diferencia de
+ * los otros emails al cliente) — esto es una notificación + CTA, no un
+ * documento formal.
+ *
+ * Si EMAIL_TEST_OVERRIDE está seteado (dev/QA), el correo se envía a esa
+ * casilla en vez de al email real del cliente, manteniendo el contenido real.
+ */
+export async function sendProgramacionEmail(
+  cotizacion: QuotationListItem,
+  token: string,
+): Promise<void> {
+  const destinatario = EMAIL_TEST_OVERRIDE ?? cotizacion.cliente.email;
+
+  logger.info(
+    { cotizacionId: cotizacion.id, to: destinatario, testOverride: !!EMAIL_TEST_OVERRIDE },
+    'email.service: sendProgramacionEmail start',
+  );
+
+  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3001';
+  // Query param, no path segment — mismo patrón que /cotizacion/pago-upload?token=
+  // ya usado en insitu-nextjs.
+  const programarUrl = `${frontendUrl}/programar-ensayos?token=${encodeURIComponent(token)}`;
+
+  const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
+
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to: [destinatario],
+    subject: `Programe sus visitas y ensayos — Cotización ${docCode} — Laboratorio Insitu`,
+    html: buildProgramacionEmailHtml(cotizacion, programarUrl),
+  });
+
+  if (error) {
+    logger.error(
+      { cotizacionId: cotizacion.id, error },
+      'email.service: resend error (programacion)',
+    );
+    throw new Error(`Error al enviar email de programación: ${error.message}`);
+  }
+
+  logger.info(
+    { cotizacionId: cotizacion.id, to: destinatario },
+    'email.service: sendProgramacionEmail OK',
   );
 }

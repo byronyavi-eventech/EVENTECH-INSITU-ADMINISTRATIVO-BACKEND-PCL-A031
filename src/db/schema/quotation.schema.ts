@@ -58,6 +58,13 @@ export const cotizacion = pgTable(
     // Days the client has to respond after receiving the token email (default 15).
     diasVigenciaToken: integer('dias_vigencia_token').notNull().default(15),
 
+    // Cantidad de visitas a terreno para TODA la cotización (1-5). Fuente única
+    // de verdad para el flujo de Programación de Ensayos — NO existe cantidad
+    // de visitas por ensayo individual (ver comentario en cotizacionDetalle.
+    // cantidadVisitas más abajo). Rango 1-5 validado en zod, no en DB (este
+    // codebase no usa check() constraints — ver duracion_meses en obra).
+    visitasTotales: integer('visitas_totales').notNull().default(1),
+
     // Firma (base64, sin prefijo data URI) capturada en el Mantenedor de Firmas
     // al aceptar la cotización. Nullable — no todas las cotizaciones están firmadas.
     firmaBase64: text('firma_base64'),
@@ -153,6 +160,16 @@ export const cotizacionDetalle = pgTable(
       .references(() => tipoEnsayo.id, { onDelete: 'restrict' }),
 
     cantidadEnsayos: integer('cantidad_ensayos').notNull(),
+
+    // DEPRECATED para efectos de scheduling (Fase 1, flujo de Programación de
+    // Ensayos, 2026-08): la cantidad de visitas de la cotización ahora vive
+    // exclusivamente en cotizacion.visitasTotales. Esta columna se mantiene
+    // NOT NULL sin cambios porque sigue siendo insumo del cálculo de precio
+    // (precioUnitario × cantidadEnsayos × cantidadVisitas) en email.service.ts,
+    // cotizacion-document.tsx (PDF) y quotation.service.ts — no tocar sin
+    // revisar esos 3 consumidores. NO usar este campo para determinar a
+    // cuántas/cuáles visitas pertenece un ensayo: para eso ver visita_ensayo
+    // en visita.schema.ts.
     cantidadVisitas: integer('cantidad_visitas').notNull(),
 
     // Price locked at quote creation time — never read from precio_ensayo retroactively.
