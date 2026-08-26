@@ -658,6 +658,251 @@ export async function sendCotizacionClienteEmail(
 }
 
 // ---------------------------------------------------------------------------
+// Comprobante de solicitud recibida al CLIENTE (envío del formulario web)
+// ---------------------------------------------------------------------------
+
+function buildSolicitudRecibidaEmailHtml(cotizacion: QuotationListItem, docCode: string): string {
+  const ensayosRows = cotizacion.detalles
+    .map(
+      (d) => `
+      <tr style="border-bottom:1px solid #e5e7eb;">
+        <td style="padding:10px 12px;font-size:13px;">${d.nombreTipoEnsayo}</td>
+        <td style="padding:10px 12px;font-size:13px;color:#6b7280;">${d.nombreArea} &rsaquo; ${d.nombreSubarea}</td>
+        <td style="padding:10px 12px;font-size:13px;text-align:right;">${d.cantidadEnsayos}</td>
+      </tr>`,
+    )
+    .join('');
+
+  const fechaSolicitud = new Date(cotizacion.createdAt).toLocaleDateString('es-CL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const tieneObservaciones =
+    !!cotizacion.observaciones && cotizacion.observaciones.trim() !== '';
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solicitud de Cotización ${docCode} — Laboratorio Insitu</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#ffffff;padding:28px 36px;border-bottom:2px solid #c8102e;">
+              <table width="100%">
+                <tr>
+                  <td>
+                    <p style="margin:0;font-size:24px;font-weight:900;color:#c8102e;letter-spacing:1px;">INSITU</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">Laboratorio de Ensayos y Calidad</p>
+                  </td>
+                  <td align="right">
+                    <p style="margin:0;font-size:14px;font-weight:700;color:#111827;">SOLICITUD DE COTIZACIÓN</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#c8102e;font-weight:700;">Nº ${docCode}</p>
+                    <span style="display:inline-block;margin-top:8px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">RECIBIDA</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Saludo -->
+          <tr>
+            <td style="padding:28px 36px 0;">
+              <p style="margin:0;font-size:15px;color:#111827;">Hola <strong>${cotizacion.cliente.nombreContacto}</strong>:</p>
+              <p style="margin:10px 0 0;font-size:14px;color:#6b7280;line-height:1.6;">
+                Hemos recibido correctamente tu <strong style="color:#111827;">solicitud de cotización</strong>.
+              </p>
+              <p style="margin:10px 0 0;font-size:14px;color:#6b7280;line-height:1.6;">
+                Tu solicitud fue registrada con el número <strong style="color:#c8102e;">${docCode}</strong> y será
+                revisada por nuestro equipo para preparar la cotización correspondiente.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Datos de la solicitud -->
+          <tr>
+            <td style="padding:24px 36px 0;">
+              <div style="background:#fffbeb;padding:8px 12px;margin-bottom:12px;border-radius:4px;border-left:3px solid #f5a623;">
+                <p style="margin:0;font-size:11px;font-weight:700;color:#c8102e;text-transform:uppercase;letter-spacing:.5px;">Datos de la Solicitud</p>
+              </div>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;width:40%;">Empresa</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.cliente.giroEmpresa}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">RUT</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.cliente.rutEmpresa ?? '—'}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Obra / Proyecto</td>
+                  <td style="padding:10px 16px;font-size:12px;font-weight:600;color:#111827;">${cotizacion.obra.nombreObra}</td>
+                </tr>
+                <tr style="background:#f9fafb;">
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Ubicación de la obra</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${cotizacion.obra.ubicacionObra}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px;font-size:12px;color:#6b7280;">Fecha de solicitud</td>
+                  <td style="padding:10px 16px;font-size:12px;color:#111827;">${fechaSolicitud}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Tabla ensayos -->
+          <tr>
+            <td style="padding:24px 36px 0;">
+              <div style="background:#fffbeb;padding:8px 12px;margin-bottom:12px;border-radius:4px;border-left:3px solid #f5a623;">
+                <p style="margin:0;font-size:11px;font-weight:700;color:#c8102e;text-transform:uppercase;letter-spacing:.5px;">Ensayos Solicitados</p>
+              </div>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+                <thead>
+                  <tr style="background:#c8102e;">
+                    <th style="padding:10px 12px;font-size:11px;color:#fff;text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Tipo de Ensayo</th>
+                    <th style="padding:10px 12px;font-size:11px;color:#fff;text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Área</th>
+                    <th style="padding:10px 12px;font-size:11px;color:#fff;text-align:right;font-weight:600;text-transform:uppercase;letter-spacing:.3px;">Cant.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${ensayosRows}
+                </tbody>
+              </table>
+            </td>
+          </tr>
+
+          ${
+            tieneObservaciones
+              ? `
+          <!-- Observaciones -->
+          <tr>
+            <td style="padding:24px 36px 0;">
+              <div style="background:#fffbeb;padding:8px 12px;margin-bottom:12px;border-radius:4px;border-left:3px solid #f5a623;">
+                <p style="margin:0;font-size:11px;font-weight:700;color:#c8102e;text-transform:uppercase;letter-spacing:.5px;">Observaciones</p>
+              </div>
+              <p style="margin:0;font-size:13px;color:#374151;line-height:1.6;">${cotizacion.observaciones}</p>
+            </td>
+          </tr>`
+              : ''
+          }
+
+          <!-- CTA -->
+          <tr>
+            <td style="padding:32px 36px 0;">
+              <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
+                Nuestro equipo revisará los antecedentes de tu solicitud y <strong style="color:#111827;">se
+                pondrá en contacto contigo a través del número de celular registrado en los datos del
+                cotizante</strong>, en caso de requerir información adicional o coordinación.
+              </p>
+              <p style="margin:10px 0 0;font-size:13px;color:#6b7280;line-height:1.6;">
+                Posteriormente, recibirás la <strong style="color:#111827;">cotización formal</strong> en el
+                correo electrónico registrado.
+              </p>
+              <p style="margin:14px 0 0;font-size:12px;color:#92400e;line-height:1.6;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 12px;">
+                <strong>Importante:</strong> este correo confirma únicamente la recepción de tu solicitud. Los
+                ensayos, cantidades, disponibilidad y valores estarán sujetos a revisión y serán confirmados
+                mediante la cotización formal.
+              </p>
+              <p style="margin:16px 0 0;font-size:12px;color:#111827;font-weight:700;">
+                N.° de solicitud: <span style="color:#c8102e;">${docCode}</span>
+              </p>
+              <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">
+                Saludos,<br/>
+                <strong style="color:#111827;">Laboratorio INSITU</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:16px 36px;">
+              <table width="100%">
+                <tr>
+                  <td style="font-size:11px;color:#9ca3af;">
+                    Este es un correo generado automáticamente. Por favor no respondas a este mensaje.<br/>
+                    © ${new Date().getFullYear()} Laboratorio Insitu · www.laboratorioinsitu.cl
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/**
+ * Envía al CLIENTE el comprobante de recepción de su solicitud de cotización
+ * (justo después de enviar el formulario web), con el PDF de la solicitud
+ * adjunto. Distinto de sendCotizacionClienteEmail: ese es el envío FORMAL
+ * (botones Aceptar/Rechazar) una vez la cotización está FIRMADA por el
+ * equipo; este es solo un acuse de recibo inmediato, sin precios finales.
+ */
+export async function sendSolicitudRecibidaEmail(
+  cotizacion: QuotationListItem & { firmaBase64: string | null },
+): Promise<void> {
+  const destinatario = EMAIL_TEST_OVERRIDE ?? cotizacion.cliente.email;
+
+  logger.info(
+    { cotizacionId: cotizacion.id, to: destinatario, testOverride: !!EMAIL_TEST_OVERRIDE },
+    'email.service: sendSolicitudRecibidaEmail start',
+  );
+
+  const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
+
+  // PDF adjunto desactivado (2026-08-25): la maqueta oficial de Noe/Manus no lo
+  // contempla — fue una decisión provisoria mía antes de tener el diseño
+  // final. Dejo la generación lista y comentada por si se pide reactivar.
+  //
+  // const pdfBuffer = await renderToBuffer(
+  //   React.createElement(CotizacionDocument, {
+  //     cotizacion,
+  //     firmaBase64: cotizacion.firmaBase64,
+  //     logoDataUri: loadLogoDataUri(),
+  //   }) as React.ReactElement<DocumentProps>,
+  // );
+
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to: [destinatario],
+    subject: `Solicitud de Cotización ${docCode} recibida — Laboratorio Insitu`,
+    html: buildSolicitudRecibidaEmailHtml(cotizacion, docCode),
+    // attachments: [
+    //   {
+    //     filename: `solicitud-cotizacion-${docCode}.pdf`,
+    //     content: pdfBuffer,
+    //   },
+    // ],
+  });
+
+  if (error) {
+    logger.error(
+      { cotizacionId: cotizacion.id, error },
+      'email.service: resend error (solicitud recibida)',
+    );
+    throw new Error(`Error al enviar email de solicitud recibida: ${error.message}`);
+  }
+
+  logger.info(
+    { cotizacionId: cotizacion.id, to: destinatario },
+    'email.service: sendSolicitudRecibidaEmail OK',
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Email interno — NUEVA cotización → ENCARGADO_ADMINISTRATIVO
 // ---------------------------------------------------------------------------
 

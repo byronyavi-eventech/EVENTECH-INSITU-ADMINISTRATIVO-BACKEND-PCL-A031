@@ -23,6 +23,7 @@ import { getEmailsByRole } from './user.service.js';
 import {
   sendNuevaNotificationEmail,
   sendEnviadaFirmaNotificationEmail,
+  sendSolicitudRecibidaEmail,
 } from './email.service.js';
 import { verifyQuotationToken } from './token.service.js';
 
@@ -66,6 +67,7 @@ export interface SubmitWebQuotationResult {
   cotizacionId: number;
   clienteId: number;
   obraId: number;
+  codigoCotizacion: string;
 }
 
 // List
@@ -1523,7 +1525,7 @@ export async function submitWebQuotation(
       }
     }
 
-    return { cotizacionId, clienteId, obraId };
+    return { cotizacionId, clienteId, obraId, codigoCotizacion: nextCode };
   });
 
   logger.info({ cotizacionId: result.cotizacionId }, 'quotation.service: submitWebQuotation OK');
@@ -1540,6 +1542,17 @@ export async function submitWebQuotation(
       logger.error(
         { err, cotizacionId: result.cotizacionId },
         'quotation.service: failed to send NUEVA notification (web submit)',
+      ),
+    );
+  // ───────────────────────────────────────────────────────────────────────────
+
+  // ── Send comprobante de solicitud recibida to the CLIENTE ──────────────────
+  getCotizacionById(result.cotizacionId)
+    .then((fullCot) => sendSolicitudRecibidaEmail(fullCot))
+    .catch((err) =>
+      logger.error(
+        { err, cotizacionId: result.cotizacionId },
+        'quotation.service: failed to send solicitud-recibida email (web submit)',
       ),
     );
   // ───────────────────────────────────────────────────────────────────────────
