@@ -108,7 +108,12 @@ const submitWebQuotationSchema = z.object({
 export const submitWebQuotationHandler: AsyncHandler = wrap(async (req, res) => {
   const body = assertValid(submitWebQuotationSchema.safeParse(req.body));
   const data = await submitWebQuotation(body);
-  res.status(201).json({ status: 'success', data });
+  // submitWebQuotation ya asigna codigoCotizacion al crear (secuencia
+  // cotizacion_codigo_seq, formato "10000-LIA"...) — lo exponemos como
+  // numeroCotizacion, mismo código que verá en el PDF/emails formales luego.
+  res
+    .status(201)
+    .json({ status: 'success', data: { ...data, numeroCotizacion: data.codigoCotizacion } });
 });
 
 // ─── GET /quotations ──────────────────────────────────────────────────────────
