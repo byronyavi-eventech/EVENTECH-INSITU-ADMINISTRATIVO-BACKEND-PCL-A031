@@ -1476,7 +1476,10 @@ export async function submitWebQuotation(
           .from(tipoEnsayo)
           .where(eq(tipoEnsayo.subareaId, matchedSubarea.id));
 
-        const normalizeStr = (str: string) => str.trim().normalize('NFC').toLowerCase();
+        // NFD decomposes accented chars into base + combining mark; the regex strips the marks.
+        // This makes matching accent-insensitive: "Límite" === "Limite", "Análisis" === "Analisis", etc.
+        const normalizeStr = (str: string) =>
+          str.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         const targetEnsayo = normalizeStr(line.ensayo);
 
         const matchedTipo = allTipos.find((t) => normalizeStr(t.nombreTipoEnsayo) === targetEnsayo);
