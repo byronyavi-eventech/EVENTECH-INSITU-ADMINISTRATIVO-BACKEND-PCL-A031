@@ -106,6 +106,13 @@
       "when": 1787610045099,
       "tag": "0014_fantastic_morlun",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1787844954097,
+      "tag": "0015_add_asistente_operaciones_role",
+      "breakpoints": true
     }
   ]
 }

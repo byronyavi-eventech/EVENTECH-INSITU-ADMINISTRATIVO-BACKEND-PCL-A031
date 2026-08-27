@@ -24,6 +24,10 @@ const BASE_ROLES: Array<{ nombreRol: string; descripcion: string }> = [
     descripcion:
       'Acceso completo a cotizaciones incluyendo firma/aceptación. Accede al Mantenedor de Firmas.',
   },
+  {
+    nombreRol: 'ASISTENTE_OPERACIONES',
+    descripcion: 'Acceso al módulo Mantenedores de Equipos.',
+  },
 ];
 
 async function seed() {
