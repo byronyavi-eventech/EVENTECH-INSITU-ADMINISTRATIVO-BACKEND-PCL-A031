@@ -21,6 +21,7 @@ import {
   listAgendamientosHandler,
 } from '../controllers/quotation.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
+import { requireRole } from '../middlewares/role.middleware.js';
 
 export const quotationRouter = Router();
 
@@ -50,23 +51,78 @@ quotationRouter.post('/:id/confirmar-programacion', confirmarProgramacionHandler
 // Protected — admin panel
 quotationRouter.get('/cuentas', requireAuth, getCuentasHandler);
 quotationRouter.get('/', requireAuth, listQuotationsHandler);
-quotationRouter.patch('/:id/estado', requireAuth, updateEstadoHandler);
-quotationRouter.put('/:id', requireAuth, updateQuotationHandler);
+
+// Gestión interna de cotizaciones — gateado por rol (ENCARGADO_ADMINISTRATIVO
+// o JEFE_LABORATORIO), mismo patrón que ASISTENTE_OPERACIONES para
+// Mantenedores de Equipos.
+quotationRouter.patch(
+  '/:id/estado',
+  requireAuth,
+  requireRole('ENCARGADO_ADMINISTRATIVO', 'JEFE_LABORATORIO'),
+  updateEstadoHandler,
+);
+quotationRouter.put(
+  '/:id',
+  requireAuth,
+  requireRole('ENCARGADO_ADMINISTRATIVO', 'JEFE_LABORATORIO'),
+  updateQuotationHandler,
+);
 
 // PDF + Email (interno — firma del jefe)
-quotationRouter.get('/:id/pdf', requireAuth, getPdfHandler);
-quotationRouter.post('/:id/send-email', requireAuth, sendEmailHandler);
+quotationRouter.get(
+  '/:id/pdf',
+  requireAuth,
+  requireRole('ENCARGADO_ADMINISTRATIVO', 'JEFE_LABORATORIO'),
+  getPdfHandler,
+);
+quotationRouter.post(
+  '/:id/send-email',
+  requireAuth,
+  requireRole('ENCARGADO_ADMINISTRATIVO', 'JEFE_LABORATORIO'),
+  sendEmailHandler,
+);
 
-// Email al cliente con botones ACEPTAR / RECHAZAR
-quotationRouter.post('/:id/send-cliente-email', requireAuth, sendClienteEmailHandler);
+// Email al cliente con botones ACEPTAR / RECHAZAR — gateado por rol, mismo
+// patrón que ASISTENTE_OPERACIONES para Mantenedores de Equipos.
+quotationRouter.post(
+  '/:id/send-cliente-email',
+  requireAuth,
+  requireRole('JEFE_LABORATORIO'),
+  sendClienteEmailHandler,
+);
 
 // Comprobantes de pago — admin descarga, verifica o rechaza
-quotationRouter.get('/:id/comprobantes', requireAuth, getComprobantesHandler);
-quotationRouter.patch('/:id/verificar-pago', requireAuth, verificarPagoHandler);
-quotationRouter.patch('/:id/rechazar-pago', requireAuth, rechazarPagoHandler);
+quotationRouter.get(
+  '/:id/comprobantes',
+  requireAuth,
+  requireRole('ENCARGADO_ADMINISTRATIVO', 'JEFE_LABORATORIO'),
+  getComprobantesHandler,
+);
+quotationRouter.patch(
+  '/:id/verificar-pago',
+  requireAuth,
+  requireRole('ENCARGADO_ADMINISTRATIVO', 'JEFE_LABORATORIO'),
+  verificarPagoHandler,
+);
+quotationRouter.patch(
+  '/:id/rechazar-pago',
+  requireAuth,
+  requireRole('ENCARGADO_ADMINISTRATIVO', 'JEFE_LABORATORIO'),
+  rechazarPagoHandler,
+);
 
 // Programación de Ensayos — admin solicita al cliente programar visitas
-quotationRouter.patch('/:id/solicitar-programacion', requireAuth, solicitarProgramacionHandler);
+quotationRouter.patch(
+  '/:id/solicitar-programacion',
+  requireAuth,
+  requireRole('ENCARGADO_ADMINISTRATIVO', 'JEFE_LABORATORIO'),
+  solicitarProgramacionHandler,
+);
 
 // Agendamientos — vista central de todas las visitas programadas (solo lectura)
-quotationRouter.get('/agendamientos', requireAuth, listAgendamientosHandler);
+quotationRouter.get(
+  '/agendamientos',
+  requireAuth,
+  requireRole('ENCARGADO_ADMINISTRATIVO', 'JEFE_LABORATORIO'),
+  listAgendamientosHandler,
+);
