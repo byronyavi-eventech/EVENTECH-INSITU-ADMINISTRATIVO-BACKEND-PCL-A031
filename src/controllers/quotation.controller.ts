@@ -10,10 +10,17 @@ import {
   getCotizacionById,
   confirmarPago,
   getComprobantesByCotizacion,
+  getProgramacionDataByToken,
+  confirmarProgramacion,
+  listAgendamientos,
   EstadoCotizacion,
 } from '../services/quotation.service.js';
-import { sendCotizacionEmail, sendCotizacionClienteEmail } from '../services/email.service.js';
-import { verifyQuotationToken } from '../services/token.service.js';
+import {
+  sendCotizacionEmail,
+  sendCotizacionClienteEmail,
+  sendProgramacionEmail,
+} from '../services/email.service.js';
+import { verifyQuotationToken, generateQuotationToken } from '../services/token.service.js';
 import {
   generateUploadPresignedUrls,
   generateDownloadPresignedUrls,
@@ -91,12 +98,22 @@ const submitWebQuotationSchema = z.object({
     .transform((s) => s.toLowerCase()),
   telefonoEncargado: z.string().trim().regex(phoneRegex),
   ensayos: z.array(ensayoLineSchema).min(1),
+  // Cantidad de visitas a terreno para TODA la cotización (1-5). Reemplaza el
+  // viejo patrón de "visitas" por ensayo individual como fuente de verdad
+  // para el flujo de Programación de Ensayos — ver visitasTotales en
+  // quotation.schema.ts. Default 1 si el cliente no lo manda (compat).
+  visitasTotales: z.coerce.number().int().min(1).max(5).default(1),
 });
 
 export const submitWebQuotationHandler: AsyncHandler = wrap(async (req, res) => {
   const body = assertValid(submitWebQuotationSchema.safeParse(req.body));
   const data = await submitWebQuotation(body);
-  res.status(201).json({ status: 'success', data });
+  // submitWebQuotation ya asigna codigoCotizacion al crear (secuencia
+  // cotizacion_codigo_seq, formato "10000-LIA"...) — lo exponemos como
+  // numeroCotizacion, mismo código que verá en el PDF/emails formales luego.
+  res
+    .status(201)
+    .json({ status: 'success', data: { ...data, numeroCotizacion: data.codigoCotizacion } });
 });
 
 // ─── GET /quotations ──────────────────────────────────────────────────────────
@@ -124,6 +141,8 @@ const VALID_ESTADOS: EstadoCotizacion[] = [
   'ESPERA_VERIFICACION',
   'PAGO_VERIFICADO',
   'PAGO_RECHAZADO',
+  'PENDIENTE_PROGRAMACION',
+  'PROGRAMADO',
   'RECHAZADA_CLIENTE',
   'RECHAZADA',
   'VENCIDA',
@@ -291,6 +310,108 @@ export const sendClienteEmailHandler: AsyncHandler = wrap(async (req, res) => {
     status: 'success',
     message: `Email enviado al cliente ${cot.cliente.email}. Estado actualizado a ENVIADA_CLIENTE.`,
   });
+});
+
+// ─── PATCH /quotations/:id/solicitar-programacion (PROTECTED — admin) ─────────
+// Dado una cotización en estado PAGO_VERIFICADO, la pasa a
+// PENDIENTE_PROGRAMACION y envía al cliente el email con el enlace al portal
+// /programar-ensayos/:token (Fase 2 del flujo de Programación de Ensayos).
+
+export const solicitarProgramacionHandler: AsyncHandler = wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) throw new AppError('ID inválido.', 400);
+
+  const cot = await getCotizacionById(id);
+
+  if (cot.estado !== 'PAGO_VERIFICADO') {
+    throw new AppError(
+      'Solo se puede solicitar programación de cotizaciones en estado PAGO_VERIFICADO.',
+      422,
+    );
+  }
+
+  const token = await generateQuotationToken(id, 'PROGRAMAR');
+  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3001';
+  const programarUrl = `${frontendUrl}/programar-ensayos?token=${encodeURIComponent(token)}`;
+
+  await sendProgramacionEmail(cot, token);
+
+  // Transition to PENDIENTE_PROGRAMACION and record timestamp
+  await db
+    .update(cotizacion)
+    .set({
+      estado: 'PENDIENTE_PROGRAMACION',
+      tokenEnviadoAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(cotizacion.id, id));
+
+  res.json({
+    status: 'success',
+    data: { id, estado: 'PENDIENTE_PROGRAMACION' as EstadoCotizacion, programarUrl },
+    message: `Solicitud de programación enviada a ${cot.cliente.email}.`,
+  });
+});
+
+// ─── GET /quotations/programacion/:token (PUBLIC — portal /programar-ensayos) ──
+// Devuelve los datos que el cliente necesita para asignar ensayos a visitas
+// y elegir fecha/hora (Fase 3). Rechaza si la cotización no está
+// PENDIENTE_PROGRAMACION o si el token no es válido/expiró.
+
+export const getProgramacionByTokenHandler: AsyncHandler = wrap(async (req, res) => {
+  const token = String(req.params.token ?? '');
+  if (!token) throw new AppError('Token requerido.', 400);
+
+  const data = await getProgramacionDataByToken(token);
+  res.json({ status: 'success', data });
+});
+
+// ─── POST /quotations/:id/confirmar-programacion (PUBLIC — cierre del flujo) ──
+// El cliente confirma fecha/hora + asignación de ensayos por visita. Persiste
+// todo, pasa la cotización a PROGRAMADO y genera 1 OT por visita.
+
+const confirmarProgramacionVisitaSchema = z.object({
+  numeroVisita: z.coerce.number().int().min(1).max(5),
+  fechaHoraProgramada: z.string().min(1),
+  detalleIds: z.array(z.coerce.number().int().min(1)).min(1),
+});
+
+const confirmarProgramacionSchema = z.object({
+  token: z.string().min(1),
+  visitas: z.array(confirmarProgramacionVisitaSchema).min(1).max(5),
+});
+
+export const confirmarProgramacionHandler: AsyncHandler = wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) throw new AppError('ID inválido.', 400);
+
+  const body = assertValid(confirmarProgramacionSchema.safeParse(req.body));
+
+  const data = await confirmarProgramacion(body, id);
+
+  res.json({
+    status: 'success',
+    data,
+    message: `Programación confirmada. ${data.ordenesTrabajo.length} OT generada(s).`,
+  });
+});
+
+// ─── GET /quotations/agendamientos (PROTECTED — admin, solo lectura) ──────────
+// Vista central de TODAS las visitas programadas de TODAS las cotizaciones
+// (reemplaza el detalle por-cotización — a pedido de Byron, ahora es una
+// página del sidebar, no un modal por fila). No usa token de cliente ni pasa
+// por OrdenesTrabajoPage.tsx (sigue mock).
+
+const listAgendamientosSchema = z.object({
+  q: z.string().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const listAgendamientosHandler: AsyncHandler = wrap(async (req, res) => {
+  const query = assertValid(listAgendamientosSchema.safeParse(req.query));
+  const result = await listAgendamientos(query);
+  res.json({ status: 'success', ...result });
 });
 
 // ─── GET /quotations/respond (PUBLIC — cliente hace click en el email) ─────────

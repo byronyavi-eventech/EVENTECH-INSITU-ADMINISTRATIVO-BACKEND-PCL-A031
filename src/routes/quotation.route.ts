@@ -15,6 +15,10 @@ import {
   getComprobantesHandler,
   verificarPagoHandler,
   rechazarPagoHandler,
+  solicitarProgramacionHandler,
+  getProgramacionByTokenHandler,
+  confirmarProgramacionHandler,
+  listAgendamientosHandler,
 } from '../controllers/quotation.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 
@@ -37,6 +41,12 @@ quotationRouter.post('/confirmar-pago', confirmarPagoHandler);
 // Public — cliente rechaza cotización con motivo (landing page)
 quotationRouter.post('/rechazar-cliente', rechazarClienteHandler);
 
+// Public — cliente carga el portal de Programación de Ensayos con su token
+quotationRouter.get('/programacion/:token', getProgramacionByTokenHandler);
+
+// Public — cliente confirma la programación (cierre del flujo, genera OT(s))
+quotationRouter.post('/:id/confirmar-programacion', confirmarProgramacionHandler);
+
 // Protected — admin panel
 quotationRouter.get('/cuentas', requireAuth, getCuentasHandler);
 quotationRouter.get('/', requireAuth, listQuotationsHandler);
@@ -54,3 +64,9 @@ quotationRouter.post('/:id/send-cliente-email', requireAuth, sendClienteEmailHan
 quotationRouter.get('/:id/comprobantes', requireAuth, getComprobantesHandler);
 quotationRouter.patch('/:id/verificar-pago', requireAuth, verificarPagoHandler);
 quotationRouter.patch('/:id/rechazar-pago', requireAuth, rechazarPagoHandler);
+
+// Programación de Ensayos — admin solicita al cliente programar visitas
+quotationRouter.patch('/:id/solicitar-programacion', requireAuth, solicitarProgramacionHandler);
+
+// Agendamientos — vista central de todas las visitas programadas (solo lectura)
+quotationRouter.get('/agendamientos', requireAuth, listAgendamientosHandler);

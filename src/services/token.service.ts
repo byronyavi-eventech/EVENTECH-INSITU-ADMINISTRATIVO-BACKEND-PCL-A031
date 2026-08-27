@@ -12,7 +12,11 @@
 const SECRET = process.env.BETTER_AUTH_SECRET ?? '';
 const TOKEN_TTL_DAYS = Number(process.env.QUOTATION_TOKEN_TTL_DAYS ?? 15);
 
-export type QuotationTokenAccion = 'ACEPTAR' | 'RECHAZAR';
+// 'PROGRAMAR' — token del flujo de Programación de Ensayos. A diferencia de
+// ACEPTAR/RECHAZAR, no se consume vía GET /quotations/respond: el cliente
+// llega directo al portal /programar-ensayos/:token del frontend, que luego
+// usa el token para autenticar sus llamadas al backend (Fase 3/4).
+export type QuotationTokenAccion = 'ACEPTAR' | 'RECHAZAR' | 'PROGRAMAR';
 
 export interface QuotationTokenPayload {
   cotizacionId: number;
@@ -138,7 +142,7 @@ export async function verifyQuotationToken(
     throw new Error('El token ha expirado. Solicita un nuevo email de cotizacion.');
   }
 
-  if (!payload.cotizacionId || !['ACEPTAR', 'RECHAZAR'].includes(payload.accion)) {
+  if (!payload.cotizacionId || !['ACEPTAR', 'RECHAZAR', 'PROGRAMAR'].includes(payload.accion)) {
     throw new Error('Token con datos invalidos.');
   }
 

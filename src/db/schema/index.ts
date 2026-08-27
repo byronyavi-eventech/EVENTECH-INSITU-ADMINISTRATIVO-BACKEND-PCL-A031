@@ -31,6 +31,9 @@ export * from './cuenta_bancaria.schema.js';
 // Quotation domain
 export * from './quotation.schema.js';
 
+// Visitas a terreno y Órdenes de Trabajo (flujo de Programación de Ensayos)
+export * from './visita.schema.js';
+
 // Payment receipts (comprobantes subidos por el cliente a S3)
 export * from './comprobante.schema.js';
 

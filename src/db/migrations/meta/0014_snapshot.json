@@ -1,5 +1,5 @@
 {
-  "id": "5a56755e-7e16-47ca-ad16-24fabaa94575",
+  "id": "69156cc5-a37a-4790-943a-e4dc87dbd638",
   "prevId": "16003630-a050-40e4-9459-3973b8221ed6",
   "version": "7",
   "dialect": "postgresql",
@@ -99,9 +99,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "account_provider_idx": {
           "name": "account_provider_idx",
@@ -120,24 +120,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "account_user_id_user_id_fk": {
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -211,9 +211,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "session_expires_at_idx": {
           "name": "session_expires_at_idx",
@@ -226,34 +226,34 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "session_user_id_user_id_fk": {
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "session_token_unique": {
           "name": "session_token_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "token"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -319,9 +319,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -329,10 +329,10 @@
       "uniqueConstraints": {
         "user_email_unique": {
           "name": "user_email_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "email"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -392,9 +392,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -472,24 +472,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "user_profile_user_id_user_id_fk": {
           "name": "user_profile_user_id_user_id_fk",
           "tableFrom": "user_profile",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -547,9 +547,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -557,10 +557,10 @@
       "uniqueConstraints": {
         "rol_nombre_rol_unique": {
           "name": "rol_nombre_rol_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "nombre_rol"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -609,9 +609,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "usuario_rol_rol_id_idx": {
           "name": "usuario_rol_rol_id_idx",
@@ -624,50 +624,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "usuario_rol_user_id_user_id_fk": {
           "name": "usuario_rol_user_id_user_id_fk",
           "tableFrom": "usuario_rol",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "usuario_rol_rol_id_rol_id_fk": {
           "name": "usuario_rol_rol_id_rol_id_fk",
           "tableFrom": "usuario_rol",
+          "tableTo": "rol",
           "columnsFrom": [
             "rol_id"
           ],
-          "tableTo": "rol",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "usuario_rol_asignado_por_user_id_fk": {
           "name": "usuario_rol_asignado_por_user_id_fk",
           "tableFrom": "usuario_rol",
+          "tableTo": "user",
           "columnsFrom": [
             "asignado_por"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -781,9 +781,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "cliente_email_idx": {
           "name": "cliente_email_idx",
@@ -796,9 +796,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "cliente_rut_empresa_idx": {
           "name": "cliente_rut_empresa_idx",
@@ -811,34 +811,34 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "cliente_user_id_user_id_fk": {
           "name": "cliente_user_id_user_id_fk",
           "tableFrom": "cliente",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "cliente_rut_empresa_unique": {
           "name": "cliente_rut_empresa_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "rut_empresa"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -906,35 +906,35 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "encargado_obra_obra_id_obra_id_fk": {
           "name": "encargado_obra_obra_id_obra_id_fk",
           "tableFrom": "encargado_obra",
+          "tableTo": "obra",
           "columnsFrom": [
             "obra_id"
           ],
-          "tableTo": "obra",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "encargado_obra_obra_correo_unique": {
           "name": "encargado_obra_obra_correo_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "obra_id",
             "correo_encargado"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1005,6 +1005,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "tiempo_traslado_horas": {
+          "name": "tiempo_traslado_horas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -1032,9 +1038,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "obra_ciudad_idx": {
           "name": "obra_ciudad_idx",
@@ -1047,24 +1053,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "obra_cliente_id_cliente_id_fk": {
           "name": "obra_cliente_id_cliente_id_fk",
           "tableFrom": "obra",
+          "tableTo": "cliente",
           "columnsFrom": [
             "cliente_id"
           ],
-          "tableTo": "cliente",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1123,9 +1129,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -1133,10 +1139,10 @@
       "uniqueConstraints": {
         "area_ensayo_nombre_area_unique": {
           "name": "area_ensayo_nombre_area_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "nombre_area"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1211,9 +1217,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "precio_ensayo_activo_idx": {
           "name": "precio_ensayo_activo_idx",
@@ -1226,9 +1232,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "precio_ensayo_fechas_idx": {
           "name": "precio_ensayo_fechas_idx",
@@ -1247,24 +1253,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "precio_ensayo_tipo_ensayo_id_tipo_ensayo_id_fk": {
           "name": "precio_ensayo_tipo_ensayo_id_tipo_ensayo_id_fk",
           "tableFrom": "precio_ensayo",
+          "tableTo": "tipo_ensayo",
           "columnsFrom": [
             "tipo_ensayo_id"
           ],
-          "tableTo": "tipo_ensayo",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1329,9 +1335,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "subarea_ensayo_activo_idx": {
           "name": "subarea_ensayo_activo_idx",
@@ -1344,35 +1350,35 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "subarea_ensayo_area_id_area_ensayo_id_fk": {
           "name": "subarea_ensayo_area_id_area_ensayo_id_fk",
           "tableFrom": "subarea_ensayo",
+          "tableTo": "area_ensayo",
           "columnsFrom": [
             "area_id"
           ],
-          "tableTo": "area_ensayo",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "subarea_ensayo_area_nombre_unique": {
           "name": "subarea_ensayo_area_nombre_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "area_id",
             "nombre_subarea"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1441,9 +1447,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "tipo_ensayo_activo_idx": {
           "name": "tipo_ensayo_activo_idx",
@@ -1456,35 +1462,35 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "tipo_ensayo_subarea_id_subarea_ensayo_id_fk": {
           "name": "tipo_ensayo_subarea_id_subarea_ensayo_id_fk",
           "tableFrom": "tipo_ensayo",
+          "tableTo": "subarea_ensayo",
           "columnsFrom": [
             "subarea_id"
           ],
-          "tableTo": "subarea_ensayo",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "tipo_ensayo_subarea_nombre_unique": {
           "name": "tipo_ensayo_subarea_nombre_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "subarea_id",
             "nombre_tipo_ensayo"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1613,6 +1619,13 @@
           "notNull": true,
           "default": 15
         },
+        "visitas_totales": {
+          "name": "visitas_totales",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
         "firma_base64": {
           "name": "firma_base64",
           "type": "text",
@@ -1723,9 +1736,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "cotizacion_estado_idx": {
           "name": "cotizacion_estado_idx",
@@ -1738,9 +1751,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "cotizacion_creado_por_idx": {
           "name": "cotizacion_creado_por_idx",
@@ -1753,9 +1766,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "cotizacion_active_idx": {
           "name": "cotizacion_active_idx",
@@ -1768,10 +1781,10 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"cotizacion\".\"deleted_at\" IS NULL",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "cotizacion_fecha_solicitud_idx": {
           "name": "cotizacion_fecha_solicitud_idx",
@@ -1784,73 +1797,73 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "cotizacion_obra_id_obra_id_fk": {
           "name": "cotizacion_obra_id_obra_id_fk",
           "tableFrom": "cotizacion",
+          "tableTo": "obra",
           "columnsFrom": [
             "obra_id"
           ],
-          "tableTo": "obra",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "cotizacion_creado_por_user_id_fk": {
           "name": "cotizacion_creado_por_user_id_fk",
           "tableFrom": "cotizacion",
+          "tableTo": "user",
           "columnsFrom": [
             "creado_por"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         },
         "cotizacion_cuenta_principal_id_cuenta_bancaria_id_fk": {
           "name": "cotizacion_cuenta_principal_id_cuenta_bancaria_id_fk",
           "tableFrom": "cotizacion",
+          "tableTo": "cuenta_bancaria",
           "columnsFrom": [
             "cuenta_principal_id"
           ],
-          "tableTo": "cuenta_bancaria",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         },
         "cotizacion_cuenta_secundaria_id_cuenta_bancaria_id_fk": {
           "name": "cotizacion_cuenta_secundaria_id_cuenta_bancaria_id_fk",
           "tableFrom": "cotizacion",
+          "tableTo": "cuenta_bancaria",
           "columnsFrom": [
             "cuenta_secundaria_id"
           ],
-          "tableTo": "cuenta_bancaria",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "cotizacion_codigo_cotizacion_unique": {
           "name": "cotizacion_codigo_cotizacion_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "codigo_cotizacion"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1924,9 +1937,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "cotizacion_detalle_tipo_ensayo_id_idx": {
           "name": "cotizacion_detalle_tipo_ensayo_id_idx",
@@ -1939,48 +1952,48 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "cotizacion_detalle_cotizacion_id_cotizacion_id_fk": {
           "name": "cotizacion_detalle_cotizacion_id_cotizacion_id_fk",
           "tableFrom": "cotizacion_detalle",
+          "tableTo": "cotizacion",
           "columnsFrom": [
             "cotizacion_id"
           ],
-          "tableTo": "cotizacion",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "cotizacion_detalle_tipo_ensayo_id_tipo_ensayo_id_fk": {
           "name": "cotizacion_detalle_tipo_ensayo_id_tipo_ensayo_id_fk",
           "tableFrom": "cotizacion_detalle",
+          "tableTo": "tipo_ensayo",
           "columnsFrom": [
             "tipo_ensayo_id"
           ],
-          "tableTo": "tipo_ensayo",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "cotizacion_detalle_cotizacion_tipo_unique": {
           "name": "cotizacion_detalle_cotizacion_tipo_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "cotizacion_id",
             "tipo_ensayo_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -2049,28 +2062,316 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "cotizacion_servicio_general_cotizacion_id_cotizacion_id_fk": {
           "name": "cotizacion_servicio_general_cotizacion_id_cotizacion_id_fk",
           "tableFrom": "cotizacion_servicio_general",
+          "tableTo": "cotizacion",
           "columnsFrom": [
             "cotizacion_id"
           ],
-          "tableTo": "cotizacion",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.orden_trabajo": {
+      "name": "orden_trabajo",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "cotizacion_id": {
+          "name": "cotizacion_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "visita_id": {
+          "name": "visita_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "codigo_ot": {
+          "name": "codigo_ot",
+          "type": "varchar(40)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "orden_trabajo_cotizacion_id_idx": {
+          "name": "orden_trabajo_cotizacion_id_idx",
+          "columns": [
+            {
+              "expression": "cotizacion_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "orden_trabajo_cotizacion_id_cotizacion_id_fk": {
+          "name": "orden_trabajo_cotizacion_id_cotizacion_id_fk",
+          "tableFrom": "orden_trabajo",
+          "tableTo": "cotizacion",
+          "columnsFrom": [
+            "cotizacion_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "orden_trabajo_visita_id_visita_id_fk": {
+          "name": "orden_trabajo_visita_id_visita_id_fk",
+          "tableFrom": "orden_trabajo",
+          "tableTo": "visita",
+          "columnsFrom": [
+            "visita_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "orden_trabajo_visita_id_unique": {
+          "name": "orden_trabajo_visita_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "visita_id"
+          ]
+        },
+        "orden_trabajo_codigo_ot_unique": {
+          "name": "orden_trabajo_codigo_ot_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "codigo_ot"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.visita": {
+      "name": "visita",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "cotizacion_id": {
+          "name": "cotizacion_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numero_visita": {
+          "name": "numero_visita",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fecha_hora_programada": {
+          "name": "fecha_hora_programada",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "visita_cotizacion_id_idx": {
+          "name": "visita_cotizacion_id_idx",
+          "columns": [
+            {
+              "expression": "cotizacion_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "visita_cotizacion_id_cotizacion_id_fk": {
+          "name": "visita_cotizacion_id_cotizacion_id_fk",
+          "tableFrom": "visita",
+          "tableTo": "cotizacion",
+          "columnsFrom": [
+            "cotizacion_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "visita_cotizacion_numero_unique": {
+          "name": "visita_cotizacion_numero_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "cotizacion_id",
+            "numero_visita"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.visita_ensayo": {
+      "name": "visita_ensayo",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "visita_id": {
+          "name": "visita_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cotizacion_detalle_id": {
+          "name": "cotizacion_detalle_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "visita_ensayo_visita_id_idx": {
+          "name": "visita_ensayo_visita_id_idx",
+          "columns": [
+            {
+              "expression": "visita_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "visita_ensayo_visita_id_visita_id_fk": {
+          "name": "visita_ensayo_visita_id_visita_id_fk",
+          "tableFrom": "visita_ensayo",
+          "tableTo": "visita",
+          "columnsFrom": [
+            "visita_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "visita_ensayo_cotizacion_detalle_id_cotizacion_detalle_id_fk": {
+          "name": "visita_ensayo_cotizacion_detalle_id_cotizacion_detalle_id_fk",
+          "tableFrom": "visita_ensayo",
+          "tableTo": "cotizacion_detalle",
+          "columnsFrom": [
+            "cotizacion_detalle_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "visita_ensayo_cotizacion_detalle_id_unique": {
+          "name": "visita_ensayo_cotizacion_detalle_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "cotizacion_detalle_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -2135,24 +2436,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "cotizacion_comprobante_cotizacion_id_cotizacion_id_fk": {
           "name": "cotizacion_comprobante_cotizacion_id_cotizacion_id_fk",
           "tableFrom": "cotizacion_comprobante",
+          "tableTo": "cotizacion",
           "columnsFrom": [
             "cotizacion_id"
           ],
-          "tableTo": "cotizacion",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2205,10 +2506,10 @@
       "uniqueConstraints": {
         "empresas_nombre_unique": {
           "name": "empresas_nombre_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "nombre"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -2460,9 +2761,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "equipos_sucursal_id_idx": {
           "name": "equipos_sucursal_id_idx",
@@ -2475,9 +2776,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "equipos_ubicacion_id_idx": {
           "name": "equipos_ubicacion_id_idx",
@@ -2490,9 +2791,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "equipos_estado_idx": {
           "name": "equipos_estado_idx",
@@ -2505,9 +2806,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "equipos_responsable_id_idx": {
           "name": "equipos_responsable_id_idx",
@@ -2520,9 +2821,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "equipos_unidad_precision_id_idx": {
           "name": "equipos_unidad_precision_id_idx",
@@ -2535,9 +2836,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "equipos_unidad_rango_id_idx": {
           "name": "equipos_unidad_rango_id_idx",
@@ -2550,112 +2851,112 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "equipos_tipo_equipo_id_tipos_equipo_id_fk": {
           "name": "equipos_tipo_equipo_id_tipos_equipo_id_fk",
           "tableFrom": "equipos",
+          "tableTo": "tipos_equipo",
           "columnsFrom": [
             "tipo_equipo_id"
           ],
-          "tableTo": "tipos_equipo",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "equipos_empresa_id_empresas_id_fk": {
           "name": "equipos_empresa_id_empresas_id_fk",
           "tableFrom": "equipos",
+          "tableTo": "empresas",
           "columnsFrom": [
             "empresa_id"
           ],
-          "tableTo": "empresas",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "equipos_sucursal_id_sucursales_id_fk": {
           "name": "equipos_sucursal_id_sucursales_id_fk",
           "tableFrom": "equipos",
+          "tableTo": "sucursales",
           "columnsFrom": [
             "sucursal_id"
           ],
-          "tableTo": "sucursales",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "equipos_ubicacion_id_ubicaciones_id_fk": {
           "name": "equipos_ubicacion_id_ubicaciones_id_fk",
           "tableFrom": "equipos",
+          "tableTo": "ubicaciones",
           "columnsFrom": [
             "ubicacion_id"
           ],
-          "tableTo": "ubicaciones",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "equipos_responsable_id_user_id_fk": {
           "name": "equipos_responsable_id_user_id_fk",
           "tableFrom": "equipos",
+          "tableTo": "user",
           "columnsFrom": [
             "responsable_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         },
         "equipos_unidad_precision_id_unidades_medida_id_fk": {
           "name": "equipos_unidad_precision_id_unidades_medida_id_fk",
           "tableFrom": "equipos",
+          "tableTo": "unidades_medida",
           "columnsFrom": [
             "unidad_precision_id"
           ],
-          "tableTo": "unidades_medida",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "equipos_unidad_rango_id_unidades_medida_id_fk": {
           "name": "equipos_unidad_rango_id_unidades_medida_id_fk",
           "tableFrom": "equipos",
+          "tableTo": "unidades_medida",
           "columnsFrom": [
             "unidad_rango_id"
           ],
-          "tableTo": "unidades_medida",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "equipos_codigo_unique": {
           "name": "equipos_codigo_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "codigo"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -2684,39 +2985,39 @@
         "equipo_tipos_ensayo_equipo_id_equipos_id_fk": {
           "name": "equipo_tipos_ensayo_equipo_id_equipos_id_fk",
           "tableFrom": "equipo_tipos_ensayo",
+          "tableTo": "equipos",
           "columnsFrom": [
             "equipo_id"
           ],
-          "tableTo": "equipos",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "equipo_tipos_ensayo_tipo_ensayo_id_tipo_ensayo_id_fk": {
           "name": "equipo_tipos_ensayo_tipo_ensayo_id_tipo_ensayo_id_fk",
           "tableFrom": "equipo_tipos_ensayo",
+          "tableTo": "tipo_ensayo",
           "columnsFrom": [
             "tipo_ensayo_id"
           ],
-          "tableTo": "tipo_ensayo",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "equipo_tipos_ensayo_equipo_id_tipo_ensayo_id_unique": {
           "name": "equipo_tipos_ensayo_equipo_id_tipo_ensayo_id_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "equipo_id",
             "tipo_ensayo_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -2767,10 +3068,10 @@
       "uniqueConstraints": {
         "grupos_nombre_unique": {
           "name": "grupos_nombre_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "nombre"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -2882,9 +3183,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "historial_calibraciones_proxima_calibracion_idx": {
           "name": "historial_calibraciones_proxima_calibracion_idx",
@@ -2897,47 +3198,47 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "historial_calibraciones_equipo_id_equipos_id_fk": {
           "name": "historial_calibraciones_equipo_id_equipos_id_fk",
           "tableFrom": "historial_calibraciones",
+          "tableTo": "equipos",
           "columnsFrom": [
             "equipo_id"
           ],
-          "tableTo": "equipos",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "historial_calibraciones_registrado_por_id_user_id_fk": {
           "name": "historial_calibraciones_registrado_por_id_user_id_fk",
           "tableFrom": "historial_calibraciones",
+          "tableTo": "user",
           "columnsFrom": [
             "registrado_por_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "historial_calibraciones_n_certificado_unique": {
           "name": "historial_calibraciones_n_certificado_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "n_certificado"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -3039,9 +3340,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "historial_mantenimientos_proximo_mantenimiento_idx": {
           "name": "historial_mantenimientos_proximo_mantenimiento_idx",
@@ -3054,37 +3355,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "historial_mantenimientos_equipo_id_equipos_id_fk": {
           "name": "historial_mantenimientos_equipo_id_equipos_id_fk",
           "tableFrom": "historial_mantenimientos",
+          "tableTo": "equipos",
           "columnsFrom": [
             "equipo_id"
           ],
-          "tableTo": "equipos",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "historial_mantenimientos_responsable_id_user_id_fk": {
           "name": "historial_mantenimientos_responsable_id_user_id_fk",
           "tableFrom": "historial_mantenimientos",
+          "tableTo": "user",
           "columnsFrom": [
             "responsable_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3198,9 +3499,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "historial_verificaciones_proxima_verificacion_idx": {
           "name": "historial_verificaciones_proxima_verificacion_idx",
@@ -3213,47 +3514,47 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "historial_verificaciones_equipo_id_equipos_id_fk": {
           "name": "historial_verificaciones_equipo_id_equipos_id_fk",
           "tableFrom": "historial_verificaciones",
+          "tableTo": "equipos",
           "columnsFrom": [
             "equipo_id"
           ],
-          "tableTo": "equipos",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "historial_verificaciones_responsable_id_user_id_fk": {
           "name": "historial_verificaciones_responsable_id_user_id_fk",
           "tableFrom": "historial_verificaciones",
+          "tableTo": "user",
           "columnsFrom": [
             "responsable_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "historial_verificaciones_n_registro_unique": {
           "name": "historial_verificaciones_n_registro_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "n_registro"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -3304,10 +3605,10 @@
       "uniqueConstraints": {
         "laboratorios_calibradores_nombre_unique": {
           "name": "laboratorios_calibradores_nombre_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "nombre"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -3364,10 +3665,10 @@
       "uniqueConstraints": {
         "procedimientos_codigo_unique": {
           "name": "procedimientos_codigo_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "codigo"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -3430,35 +3731,35 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "sucursales_empresa_id_empresas_id_fk": {
           "name": "sucursales_empresa_id_empresas_id_fk",
           "tableFrom": "sucursales",
+          "tableTo": "empresas",
           "columnsFrom": [
             "empresa_id"
           ],
-          "tableTo": "empresas",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "sucursales_empresa_id_nombre_unique": {
           "name": "sucursales_empresa_id_nombre_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "empresa_id",
             "nombre"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -3520,41 +3821,41 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "tipos_equipo_grupo_id_grupos_id_fk": {
           "name": "tipos_equipo_grupo_id_grupos_id_fk",
           "tableFrom": "tipos_equipo",
+          "tableTo": "grupos",
           "columnsFrom": [
             "grupo_id"
           ],
-          "tableTo": "grupos",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "tipos_equipo_nombre_unique": {
           "name": "tipos_equipo_nombre_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "nombre"
-          ],
-          "nullsNotDistinct": false
+          ]
         },
         "tipos_equipo_prefijo_codigo_unique": {
           "name": "tipos_equipo_prefijo_codigo_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "prefijo_codigo"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -3617,35 +3918,35 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "ubicaciones_sucursal_id_sucursales_id_fk": {
           "name": "ubicaciones_sucursal_id_sucursales_id_fk",
           "tableFrom": "ubicaciones",
+          "tableTo": "sucursales",
           "columnsFrom": [
             "sucursal_id"
           ],
-          "tableTo": "sucursales",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "ubicaciones_sucursal_id_nombre_unique": {
           "name": "ubicaciones_sucursal_id_nombre_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "sucursal_id",
             "nombre"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -3702,10 +4003,10 @@
       "uniqueConstraints": {
         "unidades_medida_nombre_unique": {
           "name": "unidades_medida_nombre_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "nombre"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -3735,6 +4036,8 @@
         "ESPERA_VERIFICACION",
         "PAGO_VERIFICADO",
         "PAGO_RECHAZADO",
+        "PENDIENTE_PROGRAMACION",
+        "PROGRAMADO",
         "RECHAZADA",
         "VENCIDA",
         "ANULADA"
@@ -3798,10 +4101,10 @@
     }
   },
   "schemas": {},
-  "views": {},
   "sequences": {},
   "roles": {},
   "policies": {},
+  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},
