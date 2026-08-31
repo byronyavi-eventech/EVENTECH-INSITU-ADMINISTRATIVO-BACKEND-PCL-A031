@@ -2,13 +2,16 @@ name: Build & Deploy Backend
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master # → Production environment
+      - release # → Testing / UAT environment
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # 1. Build Docker image and push to GHCR
   build-and-push:
     name: Build & Push Image
     runs-on: ubuntu-latest
@@ -38,6 +41,7 @@ jobs:
           tags: |
             type=sha,format=short
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=release,enable=${{ github.ref == 'refs/heads/master' }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -52,11 +56,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-    name: Deploy to Lightsail
+  # 2a. Deploy to Testing (release branch only)
+  deploy-testing:
+    name: Deploy to Testing
     runs-on: ubuntu-latest
     needs: build-and-push
-    environment: production
+    if: github.ref == 'refs/heads/release'
+    environment: testing
 
     steps:
       - name: Deploy via SSH
@@ -68,7 +74,35 @@ jobs:
           script: |
             cd ~/deploy
 
-            # Pull latest images
+            # Pull latest image
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull backend
+
+            # Rolling restart (no downtime for other services)
+            docker compose up -d --no-deps backend
+
+            # Clean up dangling images
+            docker image prune -f
+
+  # 2b. Deploy to Production (master branch only)
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/master'
+    environment: production
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd ~/deploy
+
+            # Pull latest image tagged as 'release'
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull backend
 
