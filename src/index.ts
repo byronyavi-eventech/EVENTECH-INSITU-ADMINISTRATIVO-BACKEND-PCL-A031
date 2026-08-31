@@ -18,5 +18,5 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 app.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT} [${process.env.NODE_ENV ?? 'development'}]`);
+  logger.info(`Hello, Server running on port ${PORT} [${process.env.NODE_ENV ?? 'development'}]`);
 });
