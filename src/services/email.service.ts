@@ -1405,10 +1405,10 @@ export async function sendProgramacionEmail(
     'email.service: sendProgramacionEmail start',
   );
 
-  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3001';
+  const landingPageUrl = process.env.LANDING_PAGE_URL ?? 'http://localhost:3001';
   // Query param, no path segment — mismo patrón que /cotizacion/pago-upload?token=
   // ya usado en insitu-nextjs.
-  const programarUrl = `${frontendUrl}/programar-ensayos?token=${encodeURIComponent(token)}`;
+  const programarUrl = `${landingPageUrl}/programar-ensayos?token=${encodeURIComponent(token)}`;
 
   const docCode = cotizacion.codigoCotizacion ?? `${String(cotizacion.id + 9999)}-LIA`;
 

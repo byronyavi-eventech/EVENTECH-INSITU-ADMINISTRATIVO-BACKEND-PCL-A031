@@ -331,8 +331,8 @@ export const solicitarProgramacionHandler: AsyncHandler = wrap(async (req, res) 
   }
 
   const token = await generateQuotationToken(id, 'PROGRAMAR');
-  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3001';
-  const programarUrl = `${frontendUrl}/programar-ensayos?token=${encodeURIComponent(token)}`;
+  const landingPageUrl = process.env.LANDING_PAGE_URL ?? 'http://localhost:3001';
+  const programarUrl = `${landingPageUrl}/programar-ensayos?token=${encodeURIComponent(token)}`;
 
   await sendProgramacionEmail(cot, token);
 
@@ -373,7 +373,7 @@ export const getProgramacionByTokenHandler: AsyncHandler = wrap(async (req, res)
 const confirmarProgramacionVisitaSchema = z.object({
   numeroVisita: z.coerce.number().int().min(1).max(5),
   fechaHoraProgramada: z.string().min(1),
-  detalleIds: z.array(z.coerce.number().int().min(1)).min(1),
+  detalleIds: z.array(z.coerce.number().int().min(1)),
 });
 
 const confirmarProgramacionSchema = z.object({
