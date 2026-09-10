@@ -1437,30 +1437,33 @@ export async function submitWebQuotation(
       const detallesToInsert: (typeof cotizacionDetalle.$inferInsert)[] = [];
 
       for (const line of input.ensayos) {
-        const areaNorm = line.area.trim().normalize('NFC');
-        const subareaNorm = line.subarea.trim().normalize('NFC');
+        // NFD decomposes accented chars into base + combining mark; the regex strips the marks.
+        // Applied to all three levels so matching is accent-insensitive end-to-end.
+        const stripAccents = (str: string) =>
+          str.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+
+        const areaNorm = stripAccents(line.area);
+        const subareaNorm = stripAccents(line.subarea);
         const ensayoNorm = line.ensayo.trim().normalize('NFC');
 
-        const [matchedArea] = await tx
-          .select({ id: areaEnsayo.id })
-          .from(areaEnsayo)
-          .where(ilike(areaEnsayo.nombreArea, areaNorm))
-          .limit(1);
+        // Fetch all areas and match in-memory (accent-insensitive)
+        const allAreas = await tx
+          .select({ id: areaEnsayo.id, nombreArea: areaEnsayo.nombreArea })
+          .from(areaEnsayo);
+        const matchedArea = allAreas.find((a) => stripAccents(a.nombreArea) === areaNorm);
         if (!matchedArea) {
           logger.warn({ areaNorm }, 'quotation.service: area not found — ensayo skipped');
           continue;
         }
 
-        const [matchedSubarea] = await tx
-          .select({ id: subareaEnsayo.id })
+        // Fetch all subareas for the area and match in-memory (accent-insensitive)
+        const allSubareas = await tx
+          .select({ id: subareaEnsayo.id, nombreSubarea: subareaEnsayo.nombreSubarea })
           .from(subareaEnsayo)
-          .where(
-            and(
-              eq(subareaEnsayo.areaId, matchedArea.id),
-              ilike(subareaEnsayo.nombreSubarea, subareaNorm),
-            ),
-          )
-          .limit(1);
+          .where(eq(subareaEnsayo.areaId, matchedArea.id));
+        const matchedSubarea = allSubareas.find(
+          (s) => stripAccents(s.nombreSubarea) === subareaNorm,
+        );
         if (!matchedSubarea) {
           logger.warn(
             { areaNorm, subareaNorm },
@@ -1476,10 +1479,8 @@ export async function submitWebQuotation(
           .from(tipoEnsayo)
           .where(eq(tipoEnsayo.subareaId, matchedSubarea.id));
 
-        const normalizeStr = (str: string) => str.trim().normalize('NFC').toLowerCase();
-        const targetEnsayo = normalizeStr(line.ensayo);
-
-        const matchedTipo = allTipos.find((t) => normalizeStr(t.nombreTipoEnsayo) === targetEnsayo);
+        const targetEnsayo = stripAccents(line.ensayo);
+        const matchedTipo = allTipos.find((t) => stripAccents(t.nombreTipoEnsayo) === targetEnsayo);
 
         if (!matchedTipo) {
           logger.warn(

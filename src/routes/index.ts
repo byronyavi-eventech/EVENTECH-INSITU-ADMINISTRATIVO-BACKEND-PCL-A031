@@ -5,6 +5,7 @@ import { quotationRouter } from './quotation.route.js';
 import { userRouter } from './user.route.js';
 import { ufRouter } from './uf.route.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
+import { requireRole } from '../middlewares/role.middleware.js';
 // Fase B (integración nativa): antes vivían bajo /api/mantenedores/* como
 // "módulo" aparte (Fase 3) — ahora montados directo, mismo nivel que
 // catalog/uf/user, como si siempre hubieran sido parte del Core.
@@ -25,8 +26,19 @@ routes.use(requireAuth);
 routes.use('/catalog', catalogRouter);
 routes.use('/uf', ufRouter);
 routes.use('/', userRouter);
-routes.use('/equipos', equipoRouter);
-routes.use('/equipment', equipoRouter);
-routes.use('/catalogos-equipos', catalogosEquiposRouter);
-routes.use('/dashboard-equipos', dashboardEquiposRouter);
-routes.use('/enums', enumRouter);
+
+// Mantenedores de Equipos — gateado por rol, mismo patrón que
+// JEFE_LABORATORIO para Firmas de Cotizaciones.
+routes.use('/equipos', requireRole('ASISTENTE_OPERACIONES'), equipoRouter);
+routes.use('/equipment', requireRole('ASISTENTE_OPERACIONES'), equipoRouter);
+routes.use(
+  '/catalogos-equipos',
+  requireRole('ASISTENTE_OPERACIONES'),
+  catalogosEquiposRouter,
+);
+routes.use(
+  '/dashboard-equipos',
+  requireRole('ASISTENTE_OPERACIONES'),
+  dashboardEquiposRouter,
+);
+routes.use('/enums', requireRole('ASISTENTE_OPERACIONES'), enumRouter);
