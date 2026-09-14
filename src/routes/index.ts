@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { healthRouter } from './health.route.js';
 import { catalogRouter } from './catalog.route.js';
+import { catalogPublicRouter } from './catalog-public.route.js';
 import { quotationRouter } from './quotation.route.js';
 import { userRouter } from './user.route.js';
 import { ufRouter } from './uf.route.js';
@@ -19,6 +20,10 @@ export const routes = Router();
 // Public
 routes.use('/health', healthRouter);
 routes.use('/quotations', quotationRouter);
+// Solo GET /areas (árbol de catálogo) — el formulario público de cotización
+// no tiene sesión. El resto de /catalog (POST/PUT/DELETE, listado paginado)
+// sigue abajo, protegido.
+routes.use('/catalog', catalogPublicRouter);
 
 // Protected
 routes.use(requireAuth);
