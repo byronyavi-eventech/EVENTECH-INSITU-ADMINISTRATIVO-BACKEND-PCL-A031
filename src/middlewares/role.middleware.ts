@@ -42,3 +42,44 @@ export const requireRole = (...roles: string[]) => {
     }
   };
 };
+
+/**
+ * Baseline authorization gate. Must run after `requireAuth`. Rejects with
+ * 403 if the authenticated user has zero rows in `usuario_rol` — i.e. no
+ * role assigned at all. Does not check for a *specific* role (that's
+ * `requireRole`); this only enforces "at least one role exists". Used to
+ * close the gap where a brand-new Google account with no role assigned
+ * could still reach endpoints that don't have a specific `requireRole`.
+ *
+ * Deliberately excluded from `/api/me/roles` — a zero-role user still needs
+ * to be able to ask "what are my roles?" so the frontend can tell zero-role
+ * apart from a loading/error state.
+ */
+export const requireAnyRole = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const session = res.locals.session as { user: { id: string } };
+    const userId = session.user.id;
+
+    const rows = await db
+      .select({ nombreRol: rol.nombreRol })
+      .from(usuarioRol)
+      .innerJoin(rol, eq(usuarioRol.rolId, rol.id))
+      .where(eq(usuarioRol.userId, userId));
+
+    if (rows.length === 0) {
+      res.status(403).json({
+        status: 'error',
+        message: 'No autorizado. No tienes ningún rol asignado en el sistema.',
+      });
+      return;
+    }
+
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
