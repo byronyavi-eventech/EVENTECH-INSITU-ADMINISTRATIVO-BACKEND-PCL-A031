@@ -21,7 +21,7 @@ import {
   listAgendamientosHandler,
 } from '../controllers/quotation.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
-import { requireRole } from '../middlewares/role.middleware.js';
+import { requireRole, requireAnyRole } from '../middlewares/role.middleware.js';
 
 export const quotationRouter = Router();
 
@@ -48,9 +48,11 @@ quotationRouter.get('/programacion/:token', getProgramacionByTokenHandler);
 // Public — cliente confirma la programación (cierre del flujo, genera OT(s))
 quotationRouter.post('/:id/confirmar-programacion', confirmarProgramacionHandler);
 
-// Protected — admin panel
-quotationRouter.get('/cuentas', requireAuth, getCuentasHandler);
-quotationRouter.get('/', requireAuth, listQuotationsHandler);
+// Protected — admin panel. No specific role required for these two (that's
+// a separate decision, out of scope here) — but a zero-role user still
+// can't reach them.
+quotationRouter.get('/cuentas', requireAuth, requireAnyRole, getCuentasHandler);
+quotationRouter.get('/', requireAuth, requireAnyRole, listQuotationsHandler);
 
 // Gestión interna de cotizaciones — gateado por rol (ENCARGADO_ADMINISTRATIVO
 // o JEFE_LABORATORIO), mismo patrón que ASISTENTE_OPERACIONES para
